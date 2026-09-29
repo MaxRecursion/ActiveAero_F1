@@ -49,7 +49,7 @@ ask fan projects not to use its marks in names or domains), e.g. `unseen-aero` �
 
 | Limit | Value | UNSEEN today |
 |-------|-------|--------------|
-| Max file size | 25 MiB | largest file: car model 1.2 MB; JS bundle 1.1 MB (296 KB gzip) |
+| Max file size | 25 MiB | largest file: car model 1.2 MB; JS: three.js 0.88 MB + app 0.20 MB (296 KB gzip together) |
 | Files per deploy | 20,000 | ≈ 50 |
 | Builds per month | 500 | — |
 | Bandwidth | unmetered for static assets | — |
