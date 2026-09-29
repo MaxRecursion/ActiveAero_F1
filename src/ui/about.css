@@ -1,0 +1,254 @@
+/*
+ * "How it works" dialog — laid out like the model's spec sheet: numbered sections with the
+ * heading in a left margin column, formulas in mono, assumptions as a sourced table.
+ * Source tags avoid the physics colours: dashed outline = estimate, solid ink = regulation.
+ */
+
+.about {
+  width: min(780px, calc(100% - 32px));
+  max-height: min(88vh, 920px);
+  padding: 0;
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-lg);
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: 0 40px 90px -40px rgb(22 24 29 / 0.55);
+  overflow: hidden;
+}
+.about[open] {
+  display: flex;
+  flex-direction: column;
+}
+.about::backdrop {
+  background: rgb(22 24 29 / 0.32);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+}
+.about-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 14px 14px 28px;
+  border-bottom: 1px solid var(--rule-strong);
+}
+.about-title {
+  margin: 6px 0 0;
+  font-family: var(--font-display);
+  font-weight: 760;
+  font-stretch: 118%;
+  font-size: 28px;
+  line-height: 1;
+}
+.about-body {
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 4px 28px 28px;
+}
+/* Initial focus lands on the body so arrow keys scroll it; no ring for that programmatic focus. */
+.about-body:focus { outline: none; }
+/* Each station's sections open with a band: station number, then its name in the display face. */
+.about-group-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin: 0;
+  padding: 22px 0 12px;
+  border-bottom: 1px solid var(--rule-strong);
+}
+.about-group + .about-group .about-group-head { margin-top: 18px; }
+.about-group-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-stretch: 115%;
+  font-size: 20px;
+  line-height: 1;
+  color: var(--ink);
+}
+.about-group--shared { margin-top: 8px; }
+.about-sec {
+  display: grid;
+  grid-template-columns: 160px minmax(0, 1fr);
+  column-gap: 28px;
+  padding: 18px 0;
+  border-bottom: 1px solid var(--rule);
+}
+.about-sec > * { grid-column: 2; }
+.about-h {
+  grid-column: 1;
+  grid-row: 1 / span 20;
+  margin: 2px 0 0;
+  font: 600 11px/1.35 var(--font-ui);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+.about-h .idx { display: block; margin-bottom: 4px; }
+.about-body p {
+  margin: 0 0 10px;
+  font: 400 15px/1.5 var(--font-ui);
+}
+.about-body p:last-child { margin-bottom: 0; }
+
+.formulas {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  column-gap: 18px;
+  margin-bottom: 12px;
+  padding: 10px 14px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  background: var(--paper-2);
+}
+.formula-row {
+  /* Subgrid: the formula column is as wide as the longest formula, and every row agrees. */
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: subgrid;
+  align-items: baseline;
+  padding: 4px 0;
+}
+.formula-row + .formula-row { border-top: 1px dotted var(--rule-strong); }
+/* Long formulas: the note goes under the formula instead of squeezing into a narrow column. */
+.formulas--stacked { grid-template-columns: minmax(0, 1fr); }
+.formulas--stacked .formula { white-space: normal; }
+.formula { font: 500 15px/1.4 var(--font-num); white-space: nowrap; }
+.formula-note { font: 400 14px/1.4 var(--font-ui); color: var(--ink-2); }
+
+.table-wrap { overflow-x: auto; }
+.assumptions {
+  width: 100%;
+  border-collapse: collapse;
+  font: 400 14px/1.35 var(--font-ui);
+}
+.assumptions th,
+.assumptions td {
+  padding: 8px 10px 8px 0;
+  border-bottom: 1px solid var(--rule);
+  text-align: left;
+  vertical-align: baseline;
+}
+.assumptions thead th {
+  font: 600 10.5px/1.2 var(--font-ui);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  border-bottom-color: var(--rule-strong);
+}
+.assumptions tbody th { font-weight: 500; }
+.assumptions .num {
+  font: 500 14px/1.35 var(--font-num);
+  white-space: nowrap;
+}
+.src-tag {
+  display: inline-block;
+  padding: 3px 6px;
+  border: 1px solid var(--ink);
+  border-radius: 3px;
+  font: 600 10px/1 var(--font-ui);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.src-tag--estimate {
+  border-style: dashed;
+  border-color: var(--ink-2);
+  color: var(--ink-2);
+}
+.src-tag--reg {
+  background: var(--ink);
+  color: var(--paper);
+}
+.src-tag--phys {
+  border-color: var(--rule-strong);
+  color: var(--ink-2);
+}
+
+.about-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font: 400 15px/1.5 var(--font-ui);
+}
+.about-list li {
+  position: relative;
+  padding-left: 16px;
+}
+.about-list li + li { margin-top: 6px; }
+.about-list li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.7em;
+  width: 7px;
+  border-top: 1px solid var(--ink-2);
+}
+.about-sources a {
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-color: var(--rule-strong);
+  text-underline-offset: 3px;
+}
+.about-sources a:hover { text-decoration-color: var(--ink); }
+
+.keys-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 24px;
+}
+.key-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font: 400 14px/1.3 var(--font-ui);
+}
+.keys {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 78px;
+}
+.about kbd {
+  min-width: 22px;
+  padding: 4px 6px;
+  border: 1px solid var(--rule-strong);
+  border-bottom-width: 2px;
+  border-radius: 3px;
+  background: var(--paper);
+  font: 500 11px/1 var(--font-num);
+  text-align: center;
+}
+.key-or { font-size: 11px; color: var(--ink-3); }
+
+.about-body .about-disclaimer {
+  margin-top: 20px;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--ink-2);
+}
+
+@media (max-width: 719.98px) {
+  .about {
+    width: calc(100% - 16px);
+    max-height: calc(100% - 16px);
+  }
+  .about-head { padding: 14px 8px 12px 18px; }
+  .about-title { font-size: 22px; }
+  .about-body { padding: 0 18px 20px; }
+  .about-sec { grid-template-columns: minmax(0, 1fr); padding: 16px 0; }
+  .about-sec > * { grid-column: 1; }
+  .about-h { grid-row: auto; margin-bottom: 10px; }
+  .about-h .idx { display: inline; }
+  .formulas { grid-template-columns: minmax(0, 1fr); }
+  .formula { white-space: normal; }
+  .keys-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* A source cited at the end of a list item (Station 3's rules). */
+.about-cite {
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-color: var(--rule-strong);
+  text-underline-offset: 3px;
+}
+.about-cite:hover { text-decoration-color: var(--ink); }

@@ -1,0 +1,640 @@
+/*
+ * Station 03 · Energy — the lap control (zone A), the energy readouts (zone B) and the track map
+ * (zone C). Same spec-sheet language as ui.css; loaded after it, so equal selectors win here.
+ *
+ * Colour: green (--energy) is electrical energy, slate (--engine) is engine power. Along the lap
+ * the phases are banded one way everywhere (timeline, map, chip, legend):
+ *   deploy = green · super clipping = green hatched · braking = graphite ·
+ *   engine only = light slate · mid-corner (lift) = paper.
+ * Breakpoints mirror ui.css (and the queries in createUI.ts).
+ */
+
+.tone-energy { color: color-mix(in oklab, var(--energy) 80%, #000); font-weight: 600; }
+.tone-engine { color: color-mix(in oklab, var(--engine) 80%, #000); font-weight: 600; }
+
+/* ── dock layout: lap control across the top, readouts under it, the map at the right ─ */
+
+.ui-dock[data-station='energy'] {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 0.95fr);
+  grid-template-areas:
+    'strip strip strip'
+    'speed speed chart'
+    'read  read  chart';
+}
+.ui-dock[data-station='energy'] .zone-read {
+  border-left: 0;
+  border-top: 1px solid var(--rule);
+}
+
+/* Long toggle names get a short twin for narrow docks (see the container queries below). */
+.toggle-short { display: none; }
+
+/* ── zone A: lap control ─────────────────────────────────────────────────────── */
+
+.zone-lap {
+  grid-area: speed;
+  container: lap / inline-size;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.lap-body {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  grid-template-areas:
+    'num chip ctrl clock'
+    'tl  tl   tl   tl';
+  align-items: center;
+  gap: 8px 14px;
+}
+.lap-speed-readout { grid-area: num; }
+.lap-speed-readout .speed-num { font-size: 44px; }
+.phase-chip { grid-area: chip; justify-self: start; }
+.lap-ctrl { grid-area: ctrl; display: flex; align-items: center; gap: 6px; }
+.lap-clock { grid-area: clock; justify-self: end; }
+.lap-plot { grid-area: tl; }
+
+.phase-chip {
+  --dot: var(--paper);
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  max-width: 100%;
+  height: 26px;
+  margin: 0;
+  padding: 0 10px 0 9px;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  font: 600 12.5px/1 var(--font-ui);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+}
+.phase-chip-text { overflow: hidden; text-overflow: ellipsis; }
+.phase-dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--dot);
+}
+.phase-chip[data-phase='deploy'] { background: var(--energy); color: #fff; }
+.phase-chip[data-phase='clip'] {
+  --dot: var(--energy);
+  background: repeating-linear-gradient(135deg, rgb(18 163 109 / 0.3) 0 2px, rgb(18 163 109 / 0.08) 2px 5px);
+  border-color: var(--energy);
+  color: color-mix(in oklab, var(--energy) 70%, #000);
+}
+/* Braking is graphite, but it still charges the battery: the dot says so. */
+.phase-chip[data-phase='brake'] { --dot: #4fd9a0; background: var(--weight); color: var(--paper); }
+.phase-chip[data-phase='engine'] {
+  --dot: var(--engine);
+  background: rgb(107 111 120 / 0.16);
+  border-color: rgb(107 111 120 / 0.35);
+  color: var(--ink);
+}
+.phase-chip[data-phase='lift'] {
+  --dot: var(--ink-3);
+  background: var(--paper);
+  border-color: var(--rule-strong);
+  color: var(--ink-2);
+}
+
+.lap-play {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius);
+  background: var(--paper);
+  color: var(--ink);
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s;
+}
+.lap-play:hover { border-color: var(--ink-2); background: var(--paper-2); }
+.lap-play .icon { width: 18px; height: 18px; }
+.rate-seg {
+  display: inline-grid;
+  grid-auto-flow: column;
+  padding: 2px;
+  gap: 2px;
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius);
+  background: var(--paper);
+}
+.rate-btn {
+  min-width: 36px;
+  height: 26px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  font: 500 12px/1 var(--font-num);
+  color: var(--ink-2);
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
+}
+.rate-btn:hover { background: var(--paper-2); color: var(--ink); }
+.rate-btn[aria-pressed='true'] { background: var(--ink); color: var(--paper); }
+.lap-clock {
+  margin: 0;
+  font: 500 15px/1 var(--font-num);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--ink);
+}
+.lap-clock-sep,
+.lap-clock-total,
+.lap-clock-unit { color: var(--ink-3); }
+
+/* The timeline. The whole plot is the slider's hit area; the SVG draws in real pixels. */
+.lap-plot {
+  position: relative;
+  height: 124px;
+  border-radius: 3px;
+  cursor: pointer;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.lap-plot.is-dragging { cursor: ew-resize; }
+.lap-plot:focus-visible { outline: 2px solid var(--down); outline-offset: 3px; }
+.lap-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  font-family: var(--font-num);
+}
+.lap-band--deploy { fill: var(--energy); fill-opacity: 0.34; }
+.lap-band--brake { fill: var(--weight); fill-opacity: 0.44; }
+.lap-band--engine { fill: var(--engine); fill-opacity: 0.17; }
+.lap-band--lift { fill: var(--paper-2); }
+.hatch-bg { fill: rgb(18 163 109 / 0.1); }
+.hatch-line { stroke: var(--energy); stroke-width: 1.7; }
+.lap-speed { fill: none; stroke: var(--ink); stroke-width: 1.5; stroke-linejoin: round; }
+.lap-soc-halo { fill: none; stroke: var(--paper); stroke-width: 5; stroke-linejoin: round; opacity: 0.85; }
+.lap-soc { fill: none; stroke: color-mix(in oklab, var(--energy) 78%, #000); stroke-width: 2; stroke-linejoin: round; }
+.lap-soc-tick { fill: color-mix(in oklab, var(--energy) 75%, #000); }
+.lap-corner-tick { stroke: var(--ink-2); stroke-width: 1; shape-rendering: crispEdges; }
+.lap-corner {
+  font: 600 9.5px var(--font-ui);
+  letter-spacing: 0.05em;
+  fill: var(--ink-2);
+}
+.lap-head-line { stroke: var(--ink); stroke-width: 1.5; }
+.lap-handle-body { fill: var(--paper); stroke: var(--ink); stroke-width: 1.5; }
+.lap-handle-grip { stroke: var(--ink); stroke-width: 1.5; }
+.lap-plot:focus-visible .lap-handle-body { stroke: var(--down); }
+.lap-dot { stroke: var(--paper); stroke-width: 2; }
+.lap-dot--speed { fill: var(--ink); }
+.lap-dot--soc { fill: var(--energy); }
+
+/* ── zone B: energy readouts ─────────────────────────────────────────────────── */
+
+.ro-grid--energy {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr) minmax(0, 1.5fr) minmax(0, 1fr);
+  grid-template-areas: 'batt motor harvest time';
+  gap: 10px 22px;
+}
+.ro--batt { grid-area: batt; }
+.ro--motor { grid-area: motor; }
+.harvest { grid-area: harvest; }
+.ro--laptime { grid-area: time; }
+.ro--energy .swatch,
+.ro--motor .ro-label .swatch { color: var(--energy); }
+.ro--batt .ro-num { color: color-mix(in oklab, var(--energy) 80%, #000); }
+.ro-label-aside {
+  margin-left: auto;
+  font: 400 10.5px/1 var(--font-num);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink-3);
+}
+.ro-rule { font-size: 11.5px; color: var(--ink-3); }
+
+.batt-gauge {
+  display: flex;
+  gap: 2px;
+  height: 12px;
+  margin-top: 3px;
+}
+.batt-seg {
+  position: relative;
+  flex: 1 1 0;
+  overflow: hidden;
+  border-radius: 1px;
+  background: var(--paper-2);
+  box-shadow: inset 0 0 0 1px var(--rule);
+}
+.batt-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: calc(var(--f, 0) * 100%);
+  background: var(--energy);
+}
+
+.ro--motor .ro-num { color: var(--ink-3); }
+.ro--motor:not([data-dir='idle']) .ro-num { color: color-mix(in oklab, var(--energy) 80%, #000); }
+.ro-dir {
+  font: 500 13px/1.2 var(--font-ui);
+  white-space: nowrap;
+  color: var(--ink-3);
+}
+.ro--motor:not([data-dir='idle']) .ro-dir { color: color-mix(in oklab, var(--energy) 75%, #000); font-weight: 600; }
+/* Centre-zero bar: harvest grows left of the line, deploy right. */
+.flow-track {
+  position: relative;
+  height: 8px;
+  margin-top: 3px;
+  border-radius: 1px;
+  background: var(--paper-2);
+  box-shadow: inset 0 0 0 1px var(--rule);
+}
+.flow-fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(50% - var(--l, 0) * 100%);
+  right: calc(50% - var(--r, 0) * 100%);
+  background: var(--energy);
+}
+.flow-mid {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  left: 50%;
+  border-left: 1.5px solid var(--ink-2);
+  margin-left: -0.75px;
+}
+.eng-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+.eng-label {
+  display: inline-flex;
+  align-items: center;
+  font: 500 12px/1.2 var(--font-ui);
+  color: var(--ink-2);
+}
+.eng-label .swatch { color: var(--engine); }
+.eng-track {
+  position: relative;
+  height: 6px;
+  border-radius: 1px;
+  background: var(--paper-2);
+  box-shadow: inset 0 0 0 1px var(--rule);
+}
+.eng-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: calc(var(--w, 0) * 100%);
+  background: var(--engine);
+}
+.eng-val {
+  font: 500 13px/1 var(--font-num);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: color-mix(in oklab, var(--engine) 75%, #000);
+}
+
+.harvest {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+.harvest-title { display: flex; justify-content: space-between; gap: 8px; }
+.harvest-title .split-unit { white-space: nowrap; }
+.hv-row {
+  display: grid;
+  grid-template-columns: 62px minmax(0, 1fr) 56px;
+  align-items: center;
+  gap: 8px;
+}
+.hv-name { font: 500 12px/1.2 var(--font-ui); color: var(--ink-2); }
+.hv-track {
+  position: relative;
+  height: 10px;
+  border-radius: 1px;
+  background: var(--paper-2);
+  box-shadow: inset 0 0 0 1px var(--rule);
+}
+.hv-fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(var(--x, 0) * 100%);
+  width: calc(var(--w, 0) * 100%);
+}
+.hv-fill--brake { background: var(--energy); }
+.hv-fill--clip,
+.hv-swatch--clip {
+  background: repeating-linear-gradient(135deg, var(--energy) 0 1.6px, rgb(18 163 109 / 0.16) 1.6px 4px);
+  box-shadow: inset 0 0 0 1px rgb(18 163 109 / 0.6);
+}
+.hv-fill--used { background: rgb(18 163 109 / 0.5); }
+/* Where the full lap ends up: a faint outline the bar grows into. */
+.hv-ghost {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: calc(var(--w, 0) * 100%);
+  border-right: 1px dashed rgb(18 163 109 / 0.7);
+}
+.hv-cap {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  left: var(--cap, 90%);
+  border-left: 1.5px solid var(--ink);
+  margin-left: -0.75px;
+}
+.hv-num {
+  font: 500 13px/1 var(--font-num);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+.hv-row--rec .hv-num > :first-child { color: color-mix(in oklab, var(--energy) 80%, #000); }
+.hv-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  font: 500 11.5px/1.2 var(--font-ui);
+  color: var(--ink-2);
+}
+.hv-key { display: inline-flex; align-items: center; white-space: nowrap; }
+.hv-swatch {
+  flex: none;
+  width: 12px;
+  height: 8px;
+  margin-right: 5px;
+  border-radius: 1px;
+}
+.hv-swatch--brake { background: var(--energy); }
+
+.ro--laptime .ro-sub { text-wrap: pretty; }
+.ro-strong { font-weight: 600; color: var(--ink); }
+
+/* ── zone C: track map ──────────────────────────────────────────────────────── */
+
+.zone-map { gap: 6px; }
+.map-sub { font-weight: 400; color: var(--ink-2); }
+.map-length { font: 500 12.5px/1 var(--font-num); }
+.map-legend { flex-wrap: wrap; gap: 4px 10px; }
+.legend-item--phase .legend-key {
+  width: 12px;
+  height: 8px;
+  border: 0;
+  border-radius: 1px;
+}
+.legend-item--deploy .legend-key { background: var(--energy); }
+.legend-item--clip .legend-key {
+  background: repeating-linear-gradient(135deg, var(--energy) 0 1.6px, rgb(18 163 109 / 0.16) 1.6px 4px);
+  box-shadow: inset 0 0 0 1px rgb(18 163 109 / 0.6);
+}
+.legend-item--brake .legend-key { background: var(--weight); }
+.legend-item--engine .legend-key { background: rgb(107 111 120 / 0.45); }
+.legend-item--lift .legend-key { background: var(--paper); box-shadow: inset 0 0 0 1px var(--rule-strong); }
+.map-plot {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 150px;
+}
+.map-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.map-road-edge { fill: none; stroke: var(--rule-strong); stroke-width: 9; stroke-linejoin: round; }
+.map-road { fill: none; stroke: var(--paper); stroke-width: 7; stroke-linejoin: round; }
+.map-phase { fill: none; stroke-width: 4; stroke-linejoin: round; }
+.map-phase--deploy { stroke: var(--energy); }
+.map-phase--clip { stroke: var(--energy); stroke-dasharray: 2.5 2; }
+.map-phase--brake { stroke: var(--weight); }
+.map-phase--engine { stroke: var(--engine); stroke-opacity: 0.45; }
+.map-start { stroke: var(--ink); stroke-width: 2.5; }
+.map-corner {
+  font: 500 10px var(--font-num);
+  fill: var(--ink-2);
+}
+.map-sf {
+  font: 600 9px var(--font-ui);
+  letter-spacing: 0.1em;
+  fill: var(--ink);
+}
+.map-corner,
+.map-sf {
+  paint-order: stroke;
+  stroke: var(--paper);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+.map-car { fill: var(--ink); stroke: var(--paper); stroke-width: 2.5; }
+
+/* ── narrow lap zones: controls wrap under the timeline ───────────────────────── */
+
+@container lap (max-width: 619.98px) {
+  .lap-body {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      'num  chip chip'
+      'tl   tl   tl'
+      'ctrl ctrl clock';
+  }
+}
+@container lap (max-width: 459.98px) {
+  .lap-body {
+    grid-template-areas:
+      'num  num  num'
+      'chip chip chip'
+      'tl   tl   tl'
+      'ctrl ctrl clock';
+    row-gap: 6px;
+  }
+}
+
+/* ── tablet ──────────────────────────────────────────────────────────────────── */
+
+@media (max-width: 899.98px) {
+  .ui-dock[data-station='energy'] {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas:
+      'strip strip'
+      'speed speed'
+      'read  chart';
+  }
+  .ui-dock[data-station='energy'] .zone-chart { border-left: 1px solid var(--rule); }
+  .ro-grid--energy {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas:
+      'batt    time'
+      'motor   motor'
+      'harvest harvest';
+  }
+}
+
+/* ── short screens: compact dock ─────────────────────────────────────────────── */
+
+@media (max-height: 760px) and (min-height: 600.02px) and (min-width: 720px) {
+  .lap-speed-readout .speed-num { font-size: 34px; }
+  .lap-body { row-gap: 5px; }
+  .lap-plot { height: 90px; }
+  .phase-chip { height: 24px; font-size: 12px; }
+  .lap-play { height: 30px; }
+  .rate-btn { height: 24px; }
+  .ro-grid--energy { gap: 6px 18px; }
+  .batt-gauge { height: 10px; }
+  .harvest { gap: 3px; }
+  .ro-rule,
+  .hv-legend { display: none; }
+  .map-plot { min-height: 110px; }
+}
+
+/* Short and narrow: one column of readouts; the map trades places with them (Graph). */
+@media (max-height: 760px) and (min-height: 600.02px) and (min-width: 720px) and (max-width: 899.98px) {
+  .ui-dock[data-station='energy'] {
+    grid-template-areas:
+      'strip strip'
+      'speed speed'
+      'read  read';
+  }
+  .ui-dock[data-station='energy'] .ro-grid--energy {
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr) minmax(0, 1.4fr) minmax(0, 0.9fr);
+    grid-template-areas: 'batt motor harvest time';
+    gap: 6px 16px;
+  }
+  /* The map takes the readouts' place at about their height: map left, title and legend right. */
+  .ui-dock[data-station='energy'].is-graph-open .zone-chart {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 4px 18px;
+    height: 150px;
+    border-left: 0;
+    border-top: 1px solid var(--rule);
+  }
+  .zone-map .zone-title { grid-area: 1 / 1 / 2 / 3; }
+  .zone-map .map-plot { grid-area: 2 / 1; min-height: 0; }
+  .zone-map .chart-head { grid-area: 2 / 2; flex-direction: column; flex-wrap: nowrap; align-items: flex-start; justify-content: flex-start; gap: 8px; }
+  .map-legend { display: grid; grid-template-columns: auto auto; gap: 5px 10px; }
+  .ro--laptime .ro-cmp { font-size: 11.5px; }
+}
+
+/* ── phone sheet (and every screen ≤ 600 px tall) ─────────────────────────────── */
+
+@media (max-width: 719.98px), (max-height: 600px) {
+  .ui-dock[data-station='energy'] {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      'speed'
+      'toggles'
+      'read'
+      'chart';
+  }
+  .ui-dock[data-station='energy'] .zone-read { border-top: 0; }
+  .lap-speed-readout .speed-num { font-size: 34px; }
+  .lap-body { gap: 6px 10px; }
+  .lap-plot { height: 80px; }
+  .phase-chip { height: 24px; font-size: 12px; }
+  .lap-clock { font-size: 14px; }
+
+  .ro-grid--energy {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas:
+      'batt    motor'
+      'harvest time';
+    gap: 8px 14px;
+  }
+  .ro--laptime .ro-num,
+  .ro--batt .ro-num,
+  .ro--motor .ro-num { font-size: 22px; }
+  .batt-gauge { height: 9px; }
+  .ro-rule,
+  .ro-label-aside,
+  .ro-top,
+  .hv-row--used,
+  .hv-legend,
+  .harvest-title .split-unit { display: none; }
+  .ro-dir { font-size: 12px; }
+  .hv-row { grid-template-columns: auto minmax(0, 1fr) auto; gap: 6px; }
+  .ro--laptime .ro-cmp { font-size: 12px; }
+  .map-plot { min-height: 150px; }
+  .ui-dock.is-graph-open .zone-map { gap: 4px; }
+}
+
+/* ── compact: ≤ 600 px tall — readouts and map are drawers; the timeline stays ─── */
+
+@media (max-height: 600px) {
+  .lap-speed-readout .speed-num { font-size: 30px; }
+  .lap-body { row-gap: 4px; }
+  .lap-plot { height: 62px; }
+  .lap-play { width: 32px; height: 28px; }
+  .rate-btn { height: 22px; min-width: 32px; }
+  .ui-dock.is-graph-open .zone-map { height: min(250px, var(--drawer-max, 250px)); }
+  .ui-dock.is-graph-open .zone-map .map-plot { min-height: 0; }
+  /* A short drawer: the map takes the height, its title and legend stand in a column beside it. */
+  .ui-dock.is-graph-open .zone-map {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: minmax(0, 1fr);
+    gap: 14px;
+  }
+  .zone-map .map-plot { grid-area: 1 / 1; }
+  .zone-map .chart-head {
+    grid-area: 1 / 2;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: flex-start;
+    justify-content: flex-start;
+    gap: 8px;
+  }
+  .zone-map .chart-title { display: flex; flex-direction: column; gap: 3px; font-size: 14px; }
+  .zone-map .map-sub { font-size: 12.5px; }
+  .map-legend { display: grid; grid-template-columns: auto auto; gap: 5px 10px; }
+}
+
+/* A wide compact sheet: the numbers drawer in three columns, so it fits the room above the caption. */
+@container dock (min-width: 480px) {
+  .ro-grid--energy {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr) minmax(0, 1fr);
+    grid-template-areas:
+      'batt    motor   time'
+      'harvest harvest time';
+    gap: 6px 16px;
+  }
+}
+
+/* Narrow docks (the side panel, small split panes): the short toggle name. */
+@container dock (max-width: 379.98px) {
+  .toggle[data-toggle='clipping'] .toggle-label {
+    position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+  }
+  .toggle[data-toggle='clipping'] .toggle-short { display: inline; }
+}
+
+/* Side panel: every pixel of height counts. Its map drawer is tall enough for the usual stack. */
+@media (max-height: 600px) and (min-width: 640px) and (min-aspect-ratio: 3/2) {
+  .lap-plot { height: 58px; }
+  .ui-dock.is-graph-open .zone-map { display: flex; }
+  .zone-map .chart-head { flex-direction: row; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
+  .zone-map .chart-title { display: block; }
+  .map-legend { display: flex; gap: 4px 10px; }
+  .ui-dock.is-numbers-open .zone-read--energy { width: min(360px, calc(100vw - 100% - 44px)); }
+}
+
+/* Three station tabs are wider than the space left of the toolbar on narrow phones: start the
+   tab row below the toolbar instead of under it. */
+@media (max-width: 459.98px) and (min-height: 600.02px) {
+  .header-meta { margin-top: 20px; }
+}

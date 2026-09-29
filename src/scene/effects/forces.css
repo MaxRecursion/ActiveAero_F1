@@ -1,0 +1,36 @@
+/*
+ * Force tags: tiny spec-sheet callouts next to each arrow. Paper chip, hairline border,
+ * condensed caps for the name, tabular mono for the value, a colour key matching the arrow.
+ */
+.fx-tag {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 7px 4px 6px;
+  background: var(--paper);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius);
+  box-shadow: 0 6px 16px -12px rgb(22 24 29 / 0.55);
+  color: var(--ink-2);
+  font: 600 10.5px/1 var(--font-ui);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.fx-key {
+  flex: none;
+  width: 3px;
+  height: 11px;
+  border-radius: 1px;
+  background: var(--fx-c);
+}
+
+.fx-val {
+  color: var(--ink);
+  font: 500 11.5px/1 var(--font-num);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+  text-transform: none;
+}

@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#e8e6e1" />
+    <title>UNSEEN — the 2026 grand-prix car, opened up</title>
+    <meta name="description" content="Drag the speed and watch downforce appear. An interactive 3D explainer of the 2026 grand-prix car: the forces you can't see, drawn to scale with live numbers." />
+    <meta property="og:title" content="UNSEEN — the 2026 grand-prix car, opened up" />
+    <meta property="og:description" content="Drag the speed and watch downforce appear. Station 01: why a grand-prix car could drive on the ceiling." />
+    <meta property="og:type" content="website" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  </head>
+  <body>
+    <div id="app">
+      <main id="stage" aria-label="3D view: a 2026 grand-prix car on a wind-tunnel rolling road, with force arrows drawn to scale"></main>
+      <div id="boot" aria-hidden="true">Warming up the tunnel…</div>
+      <div id="ui"></div>
+      <noscript>This explainer needs JavaScript and WebGL.</noscript>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

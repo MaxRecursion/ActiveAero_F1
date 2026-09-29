@@ -141,3 +141,14 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
+# ── UNSEEN ─────────────────────────────────────────────
+.DS_Store
+# Headless screenshots from scripts/shot.mjs
+shots/
+# Original downloaded 3D model (40 MB); the processed public/models/car.glb is committed
+models/source/
+# Cloudflare local state
+.wrangler/
+# Local tool configuration
+.claude/

@@ -1,0 +1,1423 @@
+/*
+ * The interface — an aero-department spec sheet floating over the tunnel.
+ * Paper panels, graphite ink, hairline rules; numbers in mono, labels in condensed caps.
+ * Colour carries meaning only: blue = downforce, orange = drag / power spent,
+ * graphite = weight / power available.
+ *
+ * Breakpoints: ≥ 900 desktop (3-zone dock) · 720–899 tablet (2 + chart) · < 720 phone (sheet).
+ * Short screens (601–760 tall, ≥ 720 wide) get a compact dock so the car keeps the upper half.
+ * Very short screens (≤ 600 tall) are "compact": one-row header, the caption heads the sheet,
+ * readouts and chart open as drawers. Wide ones (landscape phones, short laptop windows) turn
+ * the sheet into a panel on the right so the car keeps the full height ("side").
+ * The sheet / side / compact conditions must match the queries in createUI.ts.
+ */
+
+/* ── shared pieces ───────────────────────────────────────────────────────────── */
+
+.micro {
+  margin: 0;
+  font: 600 10.5px/1.2 var(--font-ui);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+.idx {
+  margin-right: 0.7em;
+  font-family: var(--font-num);
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--ink-3);
+}
+.swatch {
+  display: inline-block;
+  flex: none;
+  width: 8px;
+  height: 8px;
+  margin-right: 6px;
+  border-radius: 1px;
+  background: currentColor;
+}
+.ui-toolbar kbd,
+.ui-dock kbd {
+  font: 500 10px/1 var(--font-num);
+  padding: 2px 4px;
+  border: 1px solid var(--rule-strong);
+  border-radius: 3px;
+  color: var(--ink-2);
+}
+.panel,
+.ui-toolbar,
+.ui-dock {
+  background: var(--paper-glass);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  -webkit-backdrop-filter: blur(6px) saturate(1.05);
+  backdrop-filter: blur(6px) saturate(1.05);
+}
+
+/* Caption tones (also used in the dialog). Orange text is darkened a touch for contrast. */
+.tone-down { color: var(--down); font-weight: 600; }
+.tone-drag { color: color-mix(in oklab, var(--drag) 80%, #000); font-weight: 600; }
+.tone-weight { color: var(--weight); font-weight: 700; }
+.tone-strong { color: var(--ink); font-weight: 600; }
+.tone-muted { color: var(--ink-3); }
+
+/* Text-only layers must not swallow orbit drags. `!important` beats the global `#ui > *` rule. */
+.ui-header,
+.ui-bottom,
+.ui-caption {
+  pointer-events: none !important;
+}
+
+/* ── header ──────────────────────────────────────────────────────────────────── */
+
+.ui-header {
+  position: absolute;
+  top: var(--gutter);
+  left: var(--gutter);
+  max-width: min(520px, calc(100% - 2 * var(--gutter) - 150px));
+}
+.wordmark {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-stretch: 125%;
+  font-size: 40px;
+  line-height: 0.9;
+  letter-spacing: 0.01em;
+  color: var(--ink);
+}
+.tagline {
+  margin: 8px 0 0;
+  font: 400 16px/1.3 var(--font-ui);
+  color: var(--ink-2);
+}
+.header-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-top: 14px;
+}
+/* Station tabs: one joined strip, the current station inked like a pressed control. */
+.tabs {
+  display: inline-flex;
+  flex: none;
+  padding: 2px;
+  gap: 2px;
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius);
+  background: var(--paper-glass);
+}
+.tab {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 7px;
+  height: 26px;
+  padding: 0 10px 0 8px;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  font: 600 11px/26px var(--font-ui);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--ink-2);
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
+}
+.tab:hover { background: var(--paper-2); color: var(--ink); }
+.tab-num {
+  font: 500 10.5px/26px var(--font-num);
+  letter-spacing: 0;
+  color: var(--ink-3);
+}
+.tab[aria-selected='true'] {
+  background: var(--ink);
+  color: var(--paper);
+}
+.tab[aria-selected='true'] .tab-num { color: rgb(244 242 237 / 0.6); }
+.prompt {
+  margin: 0;
+  font: 500 14px/1.3 var(--font-ui);
+  color: var(--ink);
+}
+
+/* ── toolbar ─────────────────────────────────────────────────────────────────── */
+
+.ui-toolbar {
+  position: absolute;
+  top: var(--gutter);
+  right: var(--gutter);
+  display: flex;
+  padding: 3px;
+  gap: 2px;
+}
+.icon-btn {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+.icon-btn:hover { background: var(--paper-2); }
+.icon-btn:active { background: var(--rule); }
+.tip {
+  position: absolute;
+  top: calc(100% + 9px);
+  right: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: var(--radius);
+  background: var(--ink);
+  color: var(--paper);
+  font: 500 12px/1 var(--font-ui);
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateY(-3px);
+  pointer-events: none;
+  transition: opacity 0.15s, transform 0.15s var(--ease-out);
+}
+.ui-toolbar .tip kbd {
+  border-color: rgb(255 255 255 / 0.3);
+  color: var(--paper);
+}
+.icon-btn:hover .tip,
+.icon-btn:focus-visible .tip {
+  opacity: 1;
+  transform: none;
+}
+@media (hover: none) {
+  .tip { display: none; }
+}
+
+/* ── bottom: caption + dock ──────────────────────────────────────────────────── */
+
+.ui-bottom {
+  position: absolute;
+  left: var(--gutter);
+  right: var(--gutter);
+  bottom: var(--gutter);
+  max-width: 1200px;
+  margin-inline: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+.ui-caption {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  max-width: 560px;
+}
+/* A paper plate rather than a text halo: the caption often sits over the dark rolling road. */
+.caption-text {
+  margin: 0;
+  padding: 8px 12px 9px;
+  font: 400 18px/1.4 var(--font-ui);
+  color: var(--ink);
+  text-wrap: pretty;
+  background: var(--paper-glass);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+.ceiling-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: var(--radius);
+  background: var(--down);
+  color: #fff;
+  font: 500 14px/1 var(--font-ui);
+  box-shadow: 0 8px 20px -10px rgb(22 24 29 / 0.6);
+}
+.ceiling-badge[hidden] { display: none; }
+.ceiling-badge[data-state='falls'] { background: var(--warn); }
+.badge-state {
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.badge-sep { opacity: 0.6; }
+.badge-detail { font-family: var(--font-ui); }
+
+.ui-dock {
+  pointer-events: auto;
+  position: relative;
+  align-self: stretch;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.15fr);
+  grid-template-areas:
+    'strip strip strip'
+    'speed read chart';
+}
+.dock-strip {
+  grid-area: strip;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-width: 0;
+  padding: 5px 5px 5px 18px;
+  border-bottom: 1px solid var(--rule);
+}
+.conditions {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+  margin: 0;
+  white-space: nowrap;
+}
+.conditions .micro { color: var(--ink-3); }
+.conditions-vals {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font: 400 11px/1.2 var(--font-num);
+  color: var(--ink-2);
+}
+.zone {
+  min-width: 0;
+  padding: 12px 18px 14px;
+}
+/* Station panels are swapped with [hidden]; zone rules set display, so hidden must win. */
+.ui-dock [hidden] { display: none !important; }
+.strip-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+.zone-read,
+.zone-chart {
+  border-left: 1px solid var(--rule);
+}
+.zone-title {
+  display: flex;
+  align-items: baseline;
+}
+
+/* toggles */
+.toggles {
+  display: flex;
+  gap: 6px;
+  flex: none;
+}
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 27px;
+  padding: 0 6px 0 9px;
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius);
+  background: var(--paper);
+  font: 500 13px/1 var(--font-ui);
+  color: var(--ink);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.15s, color 0.15s, border-color 0.15s;
+}
+.toggle:hover { border-color: var(--ink-2); }
+.toggle-led {
+  width: 8px;
+  height: 8px;
+  border: 1.5px solid var(--ink-3);
+  border-radius: 2px;
+}
+.toggle[aria-pressed='true'] {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--paper);
+}
+.toggle[aria-pressed='true'] .toggle-led {
+  background: #7d9bff;
+  border-color: #7d9bff;
+}
+.ui-dock .toggle[aria-pressed='true'] kbd {
+  border-color: rgb(255 255 255 / 0.28);
+  color: rgb(255 255 255 / 0.75);
+}
+.drawer-btns {
+  display: flex;
+  gap: 6px;
+}
+.drawer-toggle { display: none; }
+.drawer-toggle .icon { flex: none; width: 16px; height: 16px; }
+.drawer-toggle[aria-expanded='true'] {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--paper);
+}
+
+/* ── zone A: speed ───────────────────────────────────────────────────────────── */
+
+.zone-speed {
+  grid-area: speed;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.speed-readout {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-family: var(--font-num);
+  line-height: 1;
+}
+.speed-num {
+  min-width: 3ch;
+  font-size: 50px;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.speed-unit {
+  font-size: 14px;
+  color: var(--ink-2);
+}
+.speed-law {
+  margin: auto 0 0;
+  padding-top: 8px;
+  border-top: 1px solid var(--rule);
+  font: 400 13px/1.3 var(--font-ui);
+  color: var(--ink-2);
+}
+
+/* The scale. Everything is placed on one axis inset by half a thumb, so the thumb's centre
+   line, the ticks and the ceiling marker agree at every speed. */
+.scale {
+  --thumb: 18px;
+  --track-y: 25px;
+  position: relative;
+  height: 57px;
+}
+.scale-axis {
+  position: absolute;
+  inset: 0 calc(var(--thumb) / 2);
+  pointer-events: none;
+}
+.scale-markers { position: absolute; inset: 0; }
+.scale-band {
+  position: absolute;
+  top: calc(var(--track-y) + 6px);
+  height: 12px;
+  background: var(--down-soft);
+}
+.scale-band--drag { background: var(--drag-soft); }
+.scale-tick {
+  position: absolute;
+  top: calc(var(--track-y) + 7px);
+  width: 1px;
+  height: 5px;
+  margin-left: -0.5px;
+  background: var(--ink-3);
+}
+.scale-tick.is-major {
+  height: 10px;
+  background: var(--ink);
+}
+.scale-fig {
+  position: absolute;
+  top: calc(var(--track-y) + 21px);
+  transform: translateX(-50%);
+  font: 500 10px/1 var(--font-num);
+  color: var(--ink-2);
+}
+/* A marker is a line from its label row down through the track; the label hangs off one side.
+   Two rows let markers a few km/h apart (Station 2's top speeds) keep both labels readable. */
+.scale-marker {
+  --c: var(--down);
+  position: absolute;
+  top: 2px;
+  bottom: calc(100% - var(--track-y) - 16px);
+  border-left: 1.5px solid var(--c);
+  margin-left: -0.75px;
+}
+.scale-marker.row-1 { top: 13px; }
+.scale-marker--drag { --c: color-mix(in oklab, var(--drag) 85%, #000); }
+.scale-marker--drag-alt {
+  --c: color-mix(in oklab, var(--drag) 70%, var(--paper));
+  border-left-style: dashed;
+}
+.scale-marker-label {
+  position: absolute;
+  top: 0;
+  font: 600 9.5px/1 var(--font-ui);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--c);
+  white-space: nowrap;
+}
+.scale-marker--drag-alt .scale-marker-label { color: color-mix(in oklab, var(--drag) 80%, #000); opacity: 0.75; }
+.hang-right .scale-marker-label { left: 5px; }
+.hang-left .scale-marker-label { right: 5px; }
+.scale.has-two-rows { --track-y: 34px; height: 64px; }
+
+.scale-input {
+  --track-h: 4px;
+  --thumb-h: 26px;
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(var(--track-y) + var(--track-h) / 2 - var(--thumb-h) / 2);
+  width: 100%;
+  height: var(--thumb-h);
+  margin: 0;
+  background: transparent;
+  -webkit-appearance: none;
+  appearance: none;
+  cursor: pointer;
+  touch-action: pan-y;
+}
+.scale-input:focus-visible { outline: none; }
+.scale-input::-webkit-slider-runnable-track {
+  height: var(--track-h);
+  border-radius: 2px;
+  background: linear-gradient(
+    to right,
+    var(--ink) 0 calc(var(--thumb) / 2 + (100% - var(--thumb)) * var(--p, 0)),
+    var(--rule-strong) 0
+  );
+}
+.scale-input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  box-sizing: border-box;
+  width: var(--thumb);
+  height: var(--thumb-h);
+  margin-top: calc(var(--track-h) / 2 - var(--thumb-h) / 2);
+  border: 1.5px solid var(--ink);
+  border-radius: 3px;
+  background: var(--paper) linear-gradient(var(--ink), var(--ink)) center / 1.5px 12px no-repeat;
+  box-shadow: 0 3px 8px -3px rgb(22 24 29 / 0.5);
+}
+.scale-input:focus-visible::-webkit-slider-thumb {
+  outline: 2px solid var(--down);
+  outline-offset: 2px;
+}
+.scale-input::-moz-range-track {
+  height: var(--track-h);
+  border-radius: 2px;
+  background: var(--rule-strong);
+}
+.scale-input::-moz-range-progress {
+  height: var(--track-h);
+  border-radius: 2px;
+  background: var(--ink);
+}
+.scale-input::-moz-range-thumb {
+  box-sizing: border-box;
+  width: var(--thumb);
+  height: var(--thumb-h);
+  border: 1.5px solid var(--ink);
+  border-radius: 3px;
+  background: var(--paper) linear-gradient(var(--ink), var(--ink)) center / 1.5px 12px no-repeat;
+}
+.scale-input:focus-visible::-moz-range-thumb {
+  outline: 2px solid var(--down);
+  outline-offset: 2px;
+}
+
+.presets {
+  /* One equal column per preset: long labels wrap onto two lines instead of pushing a row. */
+  container-type: inline-size;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 4px;
+}
+.preset {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 3px;
+  min-height: 42px;
+  padding: 5px 6px 5px 7px;
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius);
+  background: transparent;
+  text-align: left;
+  color: var(--ink);
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s, border-color 0.15s;
+}
+.preset:hover { background: var(--paper-2); border-color: var(--ink-2); }
+.preset-label {
+  font: 500 12px/1.1 var(--font-ui);
+  text-wrap: balance;
+}
+.preset-kmh {
+  font: 400 10px/1 var(--font-num);
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+/* When columns get narrow the unit goes; the scale right above already says km/h. */
+@container (max-width: 330px) {
+  .preset-unit { display: none; }
+}
+.preset.is-current {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--paper);
+}
+.preset.is-current .preset-kmh { color: rgb(244 242 237 / 0.7); }
+
+/* ── zone B: readouts ────────────────────────────────────────────────────────── */
+
+.zone-read {
+  grid-area: read;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ro-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  grid-template-areas:
+    'down drag'
+    'down power'
+    'split split';
+  gap: 10px 16px;
+}
+.ro {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.ro--main { grid-area: down; }
+.ro--dragforce { grid-area: drag; }
+.ro--power { grid-area: power; }
+.ro--kg { display: none; }
+.ro-label { display: flex; align-items: center; }
+.ro--down .swatch { color: var(--down); }
+.ro--drag .swatch { color: var(--drag); }
+.ro-value {
+  display: flex;
+  flex-wrap: wrap; /* an inline sub-line drops below the number when the column is narrow */
+  align-items: baseline;
+  gap: 5px;
+  margin-top: 2px;
+  font-family: var(--font-num);
+  line-height: 1;
+}
+.ro-num {
+  font-size: 24px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.ro--main .ro-num { font-size: 40px; letter-spacing: -0.03em; }
+.ro--down .ro-num { color: var(--down); }
+.ro--drag .ro-num { color: var(--drag); }
+.ro-unit {
+  font-size: 12px;
+  color: var(--ink-2);
+}
+.ro-value .ro-sub { flex: none; margin-left: 1px; }
+.ro-sub {
+  font: 400 13px/1.25 var(--font-ui);
+  color: var(--ink-2);
+  text-wrap: pretty; /* wrap between words when a column is narrow; never clip mid-word */
+}
+.ro--main .ro-sub-1 {
+  margin-top: 4px;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.split {
+  grid-area: split;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 9px;
+  border-top: 1px solid var(--rule);
+}
+.split-bar {
+  display: flex;
+  gap: 2px;
+  height: 10px;
+}
+.split-seg {
+  flex: 1 1 0;
+  min-width: 2px;
+  border-radius: 1px;
+}
+.split-seg--frontWing, .split-item--frontWing .swatch { background: #9fb4fb; }
+.split-seg--floor, .split-item--floor .swatch { background: var(--down); }
+.split-seg--rearWing, .split-item--rearWing .swatch { background: #5e84f8; }
+.split-title { display: flex; justify-content: space-between; }
+.split-unit { font: 400 11px/1 var(--font-num); letter-spacing: 0; text-transform: none; color: var(--ink-3); }
+.split-legend {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.split-item {
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: center;
+  min-width: 0;
+  white-space: nowrap;
+}
+.split-name { font: 500 12px/1.3 var(--font-ui); color: var(--ink-2); }
+.split-val { grid-column: 2; font: 500 12px/1.3 var(--font-num); color: var(--ink); }
+
+/* ── zone C: chart ───────────────────────────────────────────────────────────── */
+
+.zone-chart {
+  grid-area: chart;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.chart-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 12px;
+}
+.chart-title {
+  margin: 0;
+  font: 600 15px/1.2 var(--font-ui);
+  color: var(--ink);
+}
+.chart-legend {
+  display: flex;
+  gap: 10px;
+  font: 500 11.5px/1 var(--font-ui);
+  color: var(--ink-2);
+}
+.legend-item { display: inline-flex; align-items: center; }
+.legend-key {
+  width: 14px;
+  margin-right: 5px;
+  border-top: 2px solid;
+}
+.legend-item--down .legend-key { border-color: var(--down); }
+.legend-item--drag .legend-key { border-color: var(--drag); }
+.legend-item--weight .legend-key { border-top: 1.5px dashed var(--weight); }
+.chart-plot {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 124px;
+}
+.chart-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  font-family: var(--font-num);
+}
+.chart-grid { stroke: var(--rule); stroke-width: 1; shape-rendering: crispEdges; }
+.chart-grid--v { stroke-dasharray: 1 3; }
+.chart-axis { stroke: var(--rule-strong); stroke-width: 1; shape-rendering: crispEdges; }
+.chart-tick { font-size: 10px; fill: var(--ink-3); }
+/* Units keep their case (kN, km/h): never text-transform text that contains units. */
+.chart-unit { font-size: 10px; fill: var(--ink-3); }
+.chart-area { fill: var(--down); opacity: 0.07; }
+.chart-curve { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.chart-curve--down { stroke: var(--down); }
+.chart-curve--drag { stroke: var(--drag); }
+.chart-weight { stroke: var(--weight); stroke-width: 1.25; stroke-dasharray: 5 4; }
+.chart-weight-label { font-size: 10px; font-weight: 500; fill: var(--weight); }
+.chart-caps { font: 600 9.5px var(--font-ui); letter-spacing: 0.1em; }
+.chart-cross-drop { stroke: var(--down); stroke-dasharray: 2 3; opacity: 0.55; }
+.chart-cross { fill: var(--paper); stroke: var(--down); stroke-width: 2; }
+.chart-cross-label { font-size: 10px; font-weight: 500; fill: var(--down); }
+/* A paper halo keeps annotation text legible over grid lines and the cursor. */
+.chart-weight-label,
+.chart-cross-label {
+  paint-order: stroke;
+  stroke: var(--paper);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+.chart-cursor { stroke: var(--ink); stroke-width: 1; }
+.chart-dot { stroke: var(--paper); stroke-width: 2; }
+.chart-dot--down { fill: var(--down); }
+.chart-dot--drag { fill: var(--drag); }
+
+/* ── station 02: wing mode switch (zone A) ───────────────────────────────────── */
+
+.mode-switch {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: auto;
+  padding-top: 8px;
+  border-top: 1px solid var(--rule);
+}
+.mode-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.mode-seg {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  padding: 2px;
+  gap: 2px;
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius);
+  background: var(--paper);
+}
+.mode-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 0;
+  height: 36px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  font: 600 14px/1 var(--font-ui);
+  white-space: nowrap;
+  color: var(--ink-2);
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
+}
+.mode-btn:hover { background: var(--paper-2); color: var(--ink); }
+.mode-btn[aria-pressed='true'] {
+  background: var(--ink);
+  color: var(--paper);
+}
+.mode-glyph { flex: none; }
+.flap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.flap-track {
+  position: relative;
+  flex: 1 1 auto;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--rule);
+  overflow: hidden;
+}
+.flap-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: calc(var(--t, 0) * 100%);
+  background: var(--ink-2);
+}
+.flap-note {
+  flex: none;
+  font: 500 9.5px/1 var(--font-ui);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+.mode-help {
+  margin: 0;
+  font: 400 13px/1.3 var(--font-ui);
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+
+/* ── station 02: readouts (zone B) ───────────────────────────────────────────── */
+
+.ro-grid--aero {
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  grid-template-areas:
+    'top drag'
+    'top down'
+    'power power';
+}
+.ro--top { grid-area: top; }
+.ro--drag2 { grid-area: drag; }
+.ro--down2 { grid-area: down; }
+.ro--weight .ro-num { color: var(--ink); }
+.ro-est {
+  margin-left: 6px;
+  padding: 2px 4px;
+  border: 1px dashed var(--ink-3);
+  border-radius: 3px;
+  font-size: 9px;
+  line-height: 1;
+  letter-spacing: 0.08em;
+  color: var(--ink-2);
+}
+.ro--top .ro-sub { margin-top: 3px; }
+.top-part.is-current { font-weight: 600; color: var(--ink); }
+.ro-gain > :first-child { font-weight: 600; color: var(--ink); }
+.nowrap { white-space: nowrap; }
+.delta-chip {
+  align-self: center;
+  margin-left: 3px;
+  padding: 2px 5px;
+  border-radius: 3px;
+  font: 500 11px/1.1 var(--font-num);
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+.ro--drag .delta-chip { background: var(--drag-soft); color: color-mix(in oklab, var(--drag) 75%, #000); }
+.ro--down .delta-chip { background: var(--down-soft); color: var(--down); }
+
+.power {
+  grid-area: power;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding-top: 9px;
+  border-top: 1px solid var(--rule);
+}
+.power-title { display: flex; justify-content: space-between; }
+.meter-row {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) 62px;
+  align-items: center;
+  gap: 8px;
+}
+.meter-name { font: 500 12px/1.2 var(--font-ui); color: var(--ink-2); }
+.meter-track {
+  position: relative;
+  height: 8px;
+  border-radius: 1px;
+  background: var(--paper-2);
+  box-shadow: inset 0 0 0 1px var(--rule);
+}
+.meter-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: calc(var(--w, 0) * 100%);
+  border-radius: 1px;
+}
+.meter-row--drag .meter-fill { background: var(--drag); }
+.meter-row--weight .meter-fill { background: var(--weight); }
+.meter-tick {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  left: calc(var(--w, 0) * 100%);
+  border-left: 1.5px solid var(--weight);
+  margin-left: -0.75px;
+}
+.meter-num {
+  font: 500 13px/1 var(--font-num);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+.meter-row--drag .meter-val { color: color-mix(in oklab, var(--drag) 85%, #000); }
+.meter-unit { font-size: 10.5px; color: var(--ink-2); }
+.power-status {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 2px 0 0;
+  font: 600 13px/1.25 var(--font-ui);
+  color: var(--ink);
+}
+.status-dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ok);
+}
+.power-status[data-status='top'] .status-dot { background: var(--ink); }
+.power-status[data-status='short'] { color: var(--warn); }
+.power-status[data-status='short'] .status-dot { background: var(--warn); }
+.status-short { display: none; }
+.motor-line {
+  margin: 0;
+  font: 400 12px/1.3 var(--font-ui);
+  color: var(--ink-2);
+}
+.motor-kw { font-family: var(--font-num); font-size: 11.5px; color: var(--ink); }
+
+/* ── station 02: power chart (zone C) ────────────────────────────────────────── */
+
+.legend-item--has .legend-key { border-top: 3px solid var(--weight); }
+.legend-item--need-corner .legend-key { border-color: var(--drag); }
+.legend-item--need-straight .legend-key { border-top: 2px dashed var(--drag); }
+.chart-taper { fill: var(--weight); opacity: 0.04; }
+.chart-taper-label {
+  font: 600 9px var(--font-ui);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  fill: var(--ink-3);
+}
+.chart-curve--has { stroke: var(--weight); stroke-width: 3; }
+.chart-curve--need-corner,
+.chart-curve--need-straight { stroke: var(--drag); transition: opacity 0.25s; }
+.chart-curve--need-straight { stroke-dasharray: 6 4; stroke-linecap: butt; }
+.chart-curve.is-dim { opacity: 0.35; stroke-width: 1.5; }
+.chart-curve.is-active { stroke-width: 2.25; }
+.chart-top-drop { stroke: var(--drag); stroke-width: 1; stroke-dasharray: 1 3; }
+.chart-top-drop--straight { opacity: 0.8; }
+.chart-cross.is-dim { opacity: 0.5; }
+.chart-cross--straight { stroke-dasharray: 2.5 1.5; }
+.chart-top-label {
+  font-size: 10px;
+  font-weight: 500;
+  fill: color-mix(in oklab, var(--drag) 80%, #000);
+}
+.chart-top-label--straight { opacity: 0.8; }
+.chart-taper-label,
+.chart-top-label {
+  paint-order: stroke;
+  stroke: var(--paper);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+.chart-cross--corner,
+.chart-cross--straight { fill: var(--paper); stroke: var(--drag); stroke-width: 2; }
+.chart-dot--weight { fill: var(--weight); }
+
+/* ── tablet ──────────────────────────────────────────────────────────────────── */
+
+@media (max-width: 899.98px) {
+  .ui-dock {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas:
+      'strip strip'
+      'speed read'
+      'chart chart';
+  }
+  .zone-chart {
+    border-left: 0;
+    border-top: 1px solid var(--rule);
+  }
+  .chart-plot { min-height: 130px; }
+  /* Station 2's speed column is the tallest; its helper line lives in the caption and dialog. */
+  .mode-help { display: none; }
+  .ui-dock[data-station='activeAero'] .chart-plot { min-height: 100px; }
+  /* No room for the test conditions beside the toggles; they are in the dialog's table. */
+  .conditions { display: none; }
+  .dock-strip { padding-left: 5px; }
+}
+
+/* ── short screens (laptops, split panes): compact dock, the car keeps the upper half ─ */
+
+@media (max-height: 760px) and (min-height: 600.02px) and (min-width: 720px) {
+  .tagline { display: none; }
+  .wordmark { font-size: 32px; }
+  .header-meta { margin-top: 10px; }
+
+  .ui-bottom { gap: 8px; }
+  .caption-text { font-size: 16px; line-height: 1.35; }
+  .ceiling-badge { height: 26px; padding: 0 10px; font-size: 13px; }
+
+  .dock-strip { padding-block: 3px; }
+  .toggle { height: 25px; }
+  .zone { padding: 8px 16px 10px; }
+  .zone-title { font-size: 10px; }
+
+  .zone-speed { gap: 5px; }
+  .speed-num { font-size: 36px; }
+  .speed-unit { font-size: 13px; }
+  .scale { --track-y: 21px; height: 49px; }
+  .scale.has-two-rows { --track-y: 33px; height: 61px; }
+  /* Presets on one line: the scale right above already carries the km/h. */
+  .preset { min-height: 0; padding: 5px 6px; justify-content: center; }
+  .preset-kmh,
+  .speed-law { display: none; }
+
+  .zone-read { gap: 6px; }
+  .ro-grid { gap: 6px 14px; }
+  .ro-num { font-size: 20px; }
+  .ro--main .ro-num { font-size: 32px; }
+  .ro--main .ro-sub-1 { margin-top: 2px; font-size: 13px; }
+  .ro-sub { font-size: 12px; }
+  .split { gap: 4px; padding-top: 6px; }
+
+  .mode-switch { gap: 5px; padding-top: 7px; }
+  .mode-btn { height: 30px; font-size: 13px; }
+  .mode-help { display: none; }
+  .power { gap: 3px; padding-top: 6px; }
+  .power-status { margin-top: 0; font-size: 12.5px; }
+
+  .zone-chart { gap: 4px; }
+  .chart-title { font-size: 14px; }
+  .chart-plot { min-height: 96px; }
+}
+
+/* Short and narrow: the chart trades places with the readouts behind the Graph switch, so the
+   dock never grows taller than the speed column. */
+@media (max-height: 760px) and (min-height: 600.02px) and (min-width: 720px) and (max-width: 899.98px) {
+  .ui-dock { grid-template-areas: 'strip strip' 'speed read'; }
+  .graph-toggle { display: inline-flex; gap: 5px; height: 25px; }
+  .zone-chart { display: none; }
+  .ui-dock.is-graph-open .zone-read { display: none; }
+  .ui-dock.is-graph-open .zone-chart {
+    grid-area: read;
+    display: flex;
+    border-top: 0;
+    border-left: 1px solid var(--rule);
+  }
+}
+
+/* ── phone: header strip on top, bottom sheet below, top half of the screen for the car ─
+   Also the base for every screen ≤ 600 px tall (see "compact" and "side" below). */
+
+@media (max-width: 719.98px), (max-height: 600px) {
+  /* Only the wordmark shares the top row with the toolbar; tabs and prompt run below it. */
+  .ui-header {
+    top: 12px;
+    left: 16px;
+    max-width: calc(100% - 32px);
+  }
+  .wordmark { font-size: 24px; }
+  .tagline { display: none; }
+  .header-meta {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    margin-top: 8px;
+  }
+  .tab { height: 24px; gap: 5px; padding: 0 7px 0 6px; font-size: 10.5px; line-height: 24px; }
+  .tab-num { line-height: 24px; }
+  .prompt { font-size: 13px; }
+  .ui-toolbar { top: 10px; right: 12px; padding: 2px; }
+  .icon-btn { width: 36px; height: 36px; }
+
+  .ui-bottom {
+    left: 0;
+    right: 0;
+    bottom: 0;
+    max-width: none;
+    gap: 8px;
+  }
+  .ui-caption {
+    max-width: none;
+    padding: 0 16px;
+    gap: 6px;
+  }
+  .caption-text {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+    overflow: hidden;
+    font-size: 15px;
+    line-height: 1.35;
+  }
+  .ceiling-badge { height: 26px; padding: 0 10px; font-size: 13px; }
+
+  .ui-dock {
+    position: relative;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      'speed'
+      'toggles'
+      'read'
+      'chart';
+    gap: 10px;
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+    border-width: 1px 0 0;
+    border-radius: 10px 10px 0 0;
+  }
+  .dock-strip,
+  .strip-controls { display: contents; }
+  .conditions { display: none; }
+  .toggles {
+    grid-area: toggles;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 5px;
+  }
+  .toggle { justify-content: center; height: 32px; padding: 0 8px; font-size: 13px; }
+  /* The drawer switches sit on the speed readout's row, top-right of the sheet. */
+  .drawer-btns {
+    position: absolute;
+    top: 12px;
+    right: 16px;
+  }
+  .graph-toggle {
+    display: inline-flex;
+    gap: 5px;
+  }
+  /* Pressed state reads from the fill alone here; the LED and key hints would not fit at 360 px. */
+  .toggle-key,
+  .toggles .toggle-led { display: none; }
+
+  .zone,
+  .zone-read,
+  .zone-chart {
+    padding: 0;
+    border: 0;
+  }
+  .zone-title { display: none; }
+
+  .zone-speed { gap: 4px; }
+  .speed-readout { gap: 5px; min-height: 32px; align-items: center; }
+  .speed-num { font-size: 34px; }
+  .speed-unit { font-size: 12px; }
+  .scale { --thumb: 20px; --track-y: 25px; height: 54px; }
+  .scale-input { --thumb-h: 30px; }
+  .preset { min-height: 40px; padding: 4px 5px 4px 6px; }
+  .preset-label { font-size: 11.5px; }
+
+  .ro-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas:
+      'down drag'
+      'kg power';
+    gap: 8px 14px;
+    padding-top: 10px;
+    border-top: 1px solid var(--rule);
+  }
+  .ro--kg { display: flex; grid-area: kg; }
+  .ro-num,
+  .ro--main .ro-num { font-size: 22px; }
+  .ro--main .ro-sub-1 { margin-top: 0; font-size: 12px; }
+  .ro-sub { font-size: 12px; }
+  .ro-sub-2,
+  .split,
+  .speed-law { display: none; }
+
+  /* Station 2 on a phone: its one toggle joins Graph on the speed row, the mode switch loses
+     its heading, readouts become a 2×2. */
+  .ui-dock[data-station='activeAero'] .strip-controls {
+    display: flex;
+    position: absolute;
+    top: 12px;
+    right: 16px;
+    gap: 6px;
+  }
+  .ui-dock[data-station='activeAero'] .toggles { display: flex; }
+  .ui-dock[data-station='activeAero'] .drawer-btns { position: static; }
+  .scale.has-two-rows { --track-y: 34px; height: 63px; }
+  .mode-switch { gap: 5px; padding-top: 8px; margin-top: 4px; }
+  .mode-head,
+  .mode-help,
+  .ro-gain-why,
+  .power-title .split-unit,
+  .meter-track,
+  .motor-line,
+  .status-long { display: none; }
+  .mode-btn { height: 34px; font-size: 13.5px; }
+  .ro-grid--aero {
+    grid-template-areas:
+      'drag down'
+      'power top';
+  }
+  .ro--top .ro-sub { margin-top: 0; }
+  .power { gap: 3px; padding-top: 0; border-top: 0; }
+  .meter-row { display: flex; align-items: baseline; gap: 6px; }
+  .meter-name { min-width: 38px; font-size: 12px; }
+  .meter-num { font-size: 15px; }
+  .power-status { margin-top: 1px; font-size: 12px; }
+  .status-short { display: inline; }
+
+  .zone-chart { display: none; }
+  .ui-dock.is-graph-open .zone-chart {
+    display: flex;
+    padding-top: 10px;
+    border-top: 1px solid var(--rule);
+  }
+  .chart-plot { min-height: 140px; }
+}
+
+/* Short phones: the same trade as short desktops — the scale carries km/h, the dialog the rule. */
+@media (max-width: 719.98px) and (max-height: 760px), (max-height: 600px) {
+  .preset { min-height: 0; padding: 6px 5px 6px 6px; justify-content: center; }
+  .preset-kmh,
+  .flap-note { display: none; }
+  .flap { padding: 2px 0; }
+}
+
+/* ── compact: ≤ 600 px tall (split panes, short windows, landscape phones) ────────
+   The header folds to one row, the caption becomes the head of the sheet, and the numbers and
+   the chart open as drawers that float above it — so the car keeps its share of the screen. */
+
+@media (max-height: 600px) {
+  .ui-header {
+    top: 10px;
+    left: 14px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 12px;
+    max-width: calc(100% - 14px - 132px);
+  }
+  .wordmark { flex: none; font-size: 22px; }
+  .header-meta { margin-top: 0; }
+  .prompt { display: none; }
+  .ui-toolbar { top: 8px; right: 10px; padding: 2px; }
+  .icon-btn { width: 32px; height: 32px; }
+
+  /* Caption: the head of the sheet, on the same paper, one hairline above the controls. */
+  .ui-bottom { gap: 0; }
+  .ui-caption {
+    pointer-events: auto !important;
+    align-self: stretch;
+    max-width: none;
+    gap: 5px;
+    padding: 8px 16px 8px;
+    background: var(--paper-glass);
+    border-top: 1px solid var(--rule);
+    border-radius: 10px 10px 0 0;
+    box-shadow: 0 1px 0 rgb(255 255 255 / 0.6) inset;
+    -webkit-backdrop-filter: blur(6px) saturate(1.05);
+    backdrop-filter: blur(6px) saturate(1.05);
+  }
+  .caption-text {
+    padding: 0;
+    background: none;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    font-size: 14px;
+    line-height: 1.3;
+  }
+  .ceiling-badge { height: 22px; padding: 0 8px; gap: 6px; font-size: 12px; box-shadow: none; }
+
+  .ui-dock {
+    container: dock / inline-size;
+    gap: 8px;
+    padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+    border-radius: 0;
+  }
+  .drawer-btns { top: 11px; right: 16px; }
+  .ui-dock[data-station='activeAero'] .strip-controls { top: 11px; right: 16px; }
+  .toggle { height: 28px; }
+  .numbers-toggle { display: inline-flex; gap: 5px; }
+
+  .speed-readout { min-height: 30px; }
+  .speed-num { font-size: 30px; }
+  .scale { --track-y: 22px; height: 50px; }
+  .scale.has-two-rows { --track-y: 32px; height: 60px; }
+  .preset { padding: 5px 5px 5px 6px; }
+  /* The mode switch needs no rule of its own here, and the flap bar (a 400 ms flicker of
+     decoration) gives its row back to the car. */
+  .mode-switch { padding-top: 0; margin-top: 0; border-top: 0; }
+  .mode-btn { height: 30px; }
+  .flap { display: none; }
+
+  /* Drawers: the active station's readouts or chart, floating above the sheet on demand. */
+  .zone-read,
+  .zone-chart { display: none; }
+  .ui-dock.is-numbers-open .zone-read,
+  .ui-dock.is-graph-open .zone-chart {
+    /* Out of the grid: an absolutely placed grid item would otherwise be placed in its (now
+       empty) grid area instead of against the dock. */
+    grid-area: auto;
+    position: absolute;
+    z-index: 1;
+    left: 12px;
+    right: 12px;
+    bottom: calc(100% + var(--cap-h, 0px) + 8px);
+    display: flex;
+    max-height: var(--drawer-max, 60vh);
+    overflow: auto;
+    padding: 9px 14px 10px;
+    background: var(--paper-glass);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow);
+  }
+  .ui-dock.is-graph-open .zone-chart { height: min(210px, var(--drawer-max, 210px)); }
+  .ui-dock[data-station] .chart-plot { min-height: 0; }
+  .ui-dock.is-graph-open .zone-chart { overflow: hidden; }
+  .ro-grid { padding-top: 0; border-top: 0; }
+}
+
+/* Narrow and short (small split panes): a smaller wordmark keeps the header on one row. */
+@media (max-height: 600px) and (max-width: 519.98px) {
+  .ui-header { gap: 6px 8px; }
+  .wordmark { font-size: 18px; }
+}
+
+/* Narrow docks: the drawer switches keep their names for screen readers, show icons only. */
+@container dock (max-width: 259.98px) {
+  .drawer-toggle { width: 30px; padding: 0; justify-content: center; }
+  .drawer-toggle .toggle-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+}
+@container dock (max-width: 344.98px) {
+  .ui-dock[data-station='activeAero'] .drawer-toggle { width: 30px; padding: 0; justify-content: center; }
+  .ui-dock[data-station='activeAero'] .drawer-toggle .toggle-label {
+    position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+  }
+}
+
+/* A wide compact sheet: Station 2's numbers drawer spreads to three columns (one row less). */
+@container dock (min-width: 480px) {
+  .ro-grid--aero {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.1fr);
+    grid-template-areas:
+      'drag down top'
+      'power power top';
+  }
+}
+
+/* ── side: short and wide — the sheet becomes a panel on the right, the car keeps full height ─ */
+
+@media (max-height: 600px) and (min-width: 640px) and (min-aspect-ratio: 3/2) {
+  .ui-bottom {
+    left: auto;
+    right: 12px;
+    bottom: 10px;
+    width: clamp(300px, 40vw, 360px);
+    max-height: calc(100% - 64px); /* clear of the toolbar */
+  }
+  .ui-caption {
+    padding: 8px 14px;
+    border: 1px solid var(--rule);
+    border-bottom: 0;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  }
+  .ui-dock {
+    gap: 6px;
+    padding: 9px 14px 10px;
+    border-width: 1px;
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  }
+  .drawer-btns,
+  .ui-dock[data-station='activeAero'] .strip-controls { top: 10px; right: 14px; }
+  /* A narrower column: allow a fourth caption line rather than cut the sentence. */
+  .caption-text { font-size: 13.5px; -webkit-line-clamp: 4; line-clamp: 4; }
+
+  /* Drawers fly out to the left of the panel, bottom-aligned with it. */
+  .ui-dock.is-numbers-open .zone-read,
+  .ui-dock.is-graph-open .zone-chart {
+    left: auto;
+    right: calc(100% + 8px);
+    bottom: -1px;
+    width: min(340px, calc(100vw - 100% - 44px));
+  }
+  /* Room for the zone heading in the taller fly-out. */
+  .zone-read .zone-title { display: flex; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-toolbar *,
+  .ui-dock *,
+  .about,
+  .about * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
