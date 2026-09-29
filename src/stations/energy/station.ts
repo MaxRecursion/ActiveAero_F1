@@ -159,7 +159,7 @@ export function createEnergyStation({ garage, ui }: StationContext): Station {
           deployedMJ: x.deployedMJ,
           playing: state.playing,
           rate: state.rate,
-          caption: captionFor({ phase: x.phase, kmh: x.kmh, socMJ: x.socMJ, clipping: state.clipping }),
+          caption: captionFor({ phase: x.phase, kmh: x.kmh, socMJ: x.socMJ, clipping: state.clipping, engineKw: x.engineKw }),
         },
       });
     },

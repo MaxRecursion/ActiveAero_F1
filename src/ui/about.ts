@@ -25,7 +25,7 @@ export interface AboutDialog {
 }
 
 const DISCLAIMER =
-  'UNSEEN is an independent fan project. It is unofficial and is not associated in any way with the Formula 1 companies. ' +
+  'UNSEEN is an independent fan project. It is unofficial and is not affiliated with, endorsed by or associated in any way with the Formula 1 companies, the FIA or any team. ' +
   'F1, FORMULA ONE, FORMULA 1, FIA FORMULA ONE WORLD CHAMPIONSHIP, GRAND PRIX and related marks are trade marks of ' +
   "Formula One Licensing B.V. No team's car is depicted: the body is a concept design, and the power unit and cockpit inside it are simplified stand-ins.";
 
@@ -105,7 +105,7 @@ function downforceSections(): HTMLElement[] {
       assumptionsTable([
         row('Downforce area, ClA (corner mode)', `${ESTIMATES.clA} m²`, tag('estimate', 'Estimate')),
         row('Drag area, CdA (corner mode)', `${ESTIMATES.cdA} m²`, tag('estimate', 'Estimate')),
-        row('Minimum mass, with driver', `${REGS.minMassKg.value} kg`, tag('reg', `Reg ${REGS.minMassKg.ref}`)),
+        row('Minimum mass, with driver (724 kg + about 46 kg of tyres)', `${REGS.minMassKg.value} kg`, tag('reg', `Reg ${REGS.minMassKg.ref} + tyre estimate`)),
         row('Air density, ρ (sea level, 15 °C)', `${PHYS.rho} kg/m³`, tag('phys', 'ISA standard')),
         row('Downforce split: front wing / floor / rear wing', `${split} %`, tag('estimate', 'Estimate')),
         row('Centre-of-gravity height', `${ESTIMATES.cgHeightM} m`, tag('estimate', 'Estimate')),
@@ -129,6 +129,7 @@ const taperRows = (t: MotorTaper) => {
     row(`Motor limit, ${t.start}–${t.knee}\u00a0km/h`, lineText(t.first), src()),
     row(`Motor limit, ${t.knee}–${t.zero}\u00a0km/h`, lineText(t.second), src()),
     row(`Motor limit above ${t.zero}\u00a0km/h`, '0 kW', src()),
+    row('Overtake mode (raises the limit, to 355 km/h)', 'not modelled', tag('estimate', 'Simplification')),
   ];
 };
 
@@ -247,14 +248,14 @@ function energySections(): HTMLElement[] {
         row('Tyre grip, braking and traction, μ_long', String(ESTIMATES.gripLongitudinal), tag('estimate', 'Estimate')),
         row('Share of weight and downforce on the driven rear axle', String(ESTIMATES.rearAxleShare), tag('estimate', 'Estimate')),
         row('Combustion engine power, P_ICE', `${ESTIMATES.iceKw} kW`, tag('estimate', 'Estimate')),
-        row('Super clipping aimed for per lap (reports: 2–4 s)', `${CLIP_SECONDS_PER_LAP} s`, tag('estimate', 'Estimate')),
+        row('Super clipping aimed for per lap (reports: 2–4 s; the model runs a little over)', `${CLIP_SECONDS_PER_LAP} s`, tag('estimate', 'Estimate')),
         row('Super clipping this lap', `≈ ${fmtS(clipS)} s`, tag('result', 'Model result')),
         row('Least battery room allowed while clipping', `${fmtMJ(BRAKE_RESERVE_J / 1e6)} MJ`, tag('estimate', 'Estimate')),
         row('Peak battery charge this lap', `${fmtMJ(peakSoc)} of ${fmtLimit(store.value)} MJ`, tag('result', 'Model result')),
         row('Electric motor (MGU-K) maximum, deploy or harvest', `${motor.value} kW`, tag('reg', `Reg ${motor.ref}`)),
         ...taperRows(taper),
         row('Battery window (highest minus lowest charge)', `${fmtLimit(store.value)} MJ`, tag('reg', `Reg ${store.ref}`)),
-        row('Energy recovered per lap, at most', `${fmtLimit(cap.value)} MJ`, tag('reg', `Reg ${cap.ref}`)),
+        row('Energy recovered per lap, at most (the figure can differ by circuit)', `${fmtLimit(cap.value)} MJ`, tag('reg', `Reg ${cap.ref}`)),
       ]),
     ]),
     section('12', 'The rules', [

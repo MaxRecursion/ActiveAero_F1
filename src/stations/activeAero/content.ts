@@ -75,6 +75,13 @@ export function captionFor({ kmh, mode, straightT, status, topCornerKmh, topStra
         { text: '.' },
       ];
     }
+    if (kmh > topStraightKmh) {
+      return [
+        { text: 'On track the car ' },
+        { text: 'can’t reach this', tone: 'strong' },
+        { text: ' in either mode: the air would take more power than it has, even with the wings open.' },
+      ];
+    }
     return [
       { text: 'On track the car ' },
       { text: 'can’t reach this', tone: 'strong' },
@@ -107,7 +114,7 @@ export function captionFor({ kmh, mode, straightT, status, topCornerKmh, topStra
     return [
       { text: 'Straight Mode tops out near ' },
       { text: `${Math.round(topStraightKmh)} km/h`, tone: 'strong' },
-      { text: '. By 345 km/h the rules allow the electric motor nothing at all.' },
+      { text: '. Without Overtake, by 345 km/h the rules allow the electric motor nothing at all.' },
     ];
   }
   return [

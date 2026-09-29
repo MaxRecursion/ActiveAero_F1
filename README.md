@@ -7,7 +7,7 @@ thing visible — drawn on the car, with live numbers and a one-line *why*.
 |---|---------|---------|----------------------|
 | 01 | **Downforce** | Speed | Downforce and drag arrows growing with speed², the floor doing most of the work, and the speed at which the car could drive on the ceiling |
 | 02 | **Active aero** | Speed · Corner / Straight Mode | 2026 wings opening (no DRS any more), drag vs downforce, and why top speed is where *power available* meets *power the air takes* |
-| 03 | **Energy** | A lap you can scrub | The half-electric power unit: braking recovery, deployment, super clipping and a 4 MJ battery that often runs dry |
+| 03 | **Energy** | A lap you can scrub | The half-electric power unit: braking recovery, deployment, super clipping and a 4 MJ usable battery window that often runs dry |
 
 Numbers come from small, documented physics models. Regulation facts cite the FIA 2026 Technical Regulations
 (Section C, Issue 20); anything not published (aero coefficients, grip, …) is labelled **estimate** in the app.
@@ -21,7 +21,7 @@ npm test           # physics unit tests (vitest)
 npm run build      # type-check + production build into dist/
 ```
 
-Requires Node 22+. The site is fully static (`dist/`), see [docs/DEPLOY.md](docs/DEPLOY.md) for hosting.
+Requires Node 22.12+. The site is fully static (`dist/`), see [docs/DEPLOY.md](docs/DEPLOY.md) for hosting.
 
 ## How it's built
 
@@ -47,6 +47,6 @@ Code: GNU GPL v3 (see [LICENSE](LICENSE)). The 3D model keeps its own CC BY 4.0 
 
 ## Disclaimer
 
-UNSEEN is an independent fan project. It is unofficial and is not associated in any way with the Formula 1
-companies. F1, FORMULA ONE, FORMULA 1, FIA FORMULA ONE WORLD CHAMPIONSHIP, GRAND PRIX and related marks are
+UNSEEN is an independent fan project. It is unofficial and is not affiliated with, endorsed by or associated in any way with the Formula 1
+companies, the FIA or any team. F1, FORMULA ONE, FORMULA 1, FIA FORMULA ONE WORLD CHAMPIONSHIP, GRAND PRIX and related marks are
 trade marks of Formula One Licensing B.V. No team's car or livery is depicted.

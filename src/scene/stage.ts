@@ -101,6 +101,7 @@ export function createStage(opts: StageOptions): Stage {
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFShadowMap;
   renderer.domElement.setAttribute('role', 'img');
+  renderer.domElement.setAttribute('aria-label', 'Interactive 3D view of the car. The panels around it describe what it shows.');
   mount.appendChild(renderer.domElement);
 
   const labels = new CSS2DRenderer();

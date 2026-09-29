@@ -69,6 +69,11 @@
 .ui-caption {
   pointer-events: none !important;
 }
+/* ...but the station tabs sit in the header and must take clicks and taps. */
+.ui-header .tabs,
+.ui-header .tab {
+  pointer-events: auto !important;
+}
 
 /* ── header ──────────────────────────────────────────────────────────────────── */
 

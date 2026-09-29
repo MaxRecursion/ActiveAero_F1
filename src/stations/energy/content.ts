@@ -4,7 +4,7 @@
  * Captions follow the lap phase (with a couple of refinements: an empty battery, a slow corner
  * exit), so they change a few times per lap, never every frame.
  */
-import { REGS } from '../../physics/constants';
+import { ESTIMATES, REGS } from '../../physics/constants';
 import type { LapPhase } from '../../physics/lap';
 import type { CaptionRun } from '../../ui/types';
 
@@ -13,14 +13,20 @@ export interface CaptionContext {
   kmh: number;
   socMJ: number;
   clipping: boolean;
+  /** Combustion engine output at this moment, kW (tells a flat-out fast corner from a lift). */
+  engineKw?: number;
 }
 
 /** Below this charge the motor is about to stop helping. */
 const EMPTY_MJ = 0.05;
 
 const MOTOR_KW = `${REGS.mguKMaxKw.value} kW`;
+/** The regulated motor limit starts to fall here (FIA C5.2.8). */
+const MOTOR_FADE_KMH = 290;
+/** At or above this share of the engine's output the driver is effectively flat out. */
+const FLAT_OUT_SHARE = 0.95;
 
-export function captionFor({ phase, kmh, socMJ, clipping }: CaptionContext): CaptionRun[] {
+export function captionFor({ phase, kmh, socMJ, clipping, engineKw }: CaptionContext): CaptionRun[] {
   switch (phase) {
     case 'brake':
       return [
@@ -42,11 +48,18 @@ export function captionFor({ phase, kmh, socMJ, clipping }: CaptionContext): Cap
       return [
         { text: 'Full throttle: the battery adds up to ' },
         { text: MOTOR_KW, tone: 'energy' },
-        { text: ' through the motor, fading as speed climbs — at low speed nearly as much as the ' },
-        { text: 'engine', tone: 'engine' },
-        { text: ' makes on its own.' },
+        { text: ' through the motor, as much as the tyres can use — until the rules fade it out above ' },
+        { text: `${MOTOR_FADE_KMH} km/h`, tone: 'strong' },
+        { text: '.' },
       ];
     case 'lift':
+      if (engineKw !== undefined && engineKw >= FLAT_OUT_SHARE * ESTIMATES.iceKw) {
+        return [
+          { text: 'Fast corner: still on the power, but ' },
+          { text: 'grip', tone: 'strong' },
+          { text: ' sets the speed, not power.' },
+        ];
+      }
       return [
         { text: 'Mid-corner the driver is partly off the throttle: here speed is set by ' },
         { text: 'grip', tone: 'strong' },
@@ -57,7 +70,7 @@ export function captionFor({ phase, kmh, socMJ, clipping }: CaptionContext): Cap
       if (socMJ < EMPTY_MJ && kmh > 150) {
         return [
           { text: 'Battery empty', tone: 'strong' },
-          { text: `: the car has just lost up to ${MOTOR_KW}. This is how 2026 cars run out of speed mid-straight` },
+          { text: `: no motor power left (up to ${MOTOR_KW} lost). This is how 2026 cars run out of speed mid-straight` },
           ...(clipping ? [] : [{ text: ' — turn super clipping back on', tone: 'muted' as const }]),
           { text: '.' },
         ];
