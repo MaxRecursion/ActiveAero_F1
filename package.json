@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "shot": "node scripts/shot.mjs"
+    "shot": "node scripts/shot.mjs",
+    "model": "node --max-old-space-size=8192 scripts/model/process.mjs"
   },
   "dependencies": {
     "@fontsource-variable/archivo": "5.3.0",

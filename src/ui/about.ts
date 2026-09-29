@@ -27,7 +27,7 @@ export interface AboutDialog {
 const DISCLAIMER =
   'UNSEEN is an independent fan project. It is unofficial and is not associated in any way with the Formula 1 companies. ' +
   'F1, FORMULA ONE, FORMULA 1, FIA FORMULA ONE WORLD CHAMPIONSHIP, GRAND PRIX and related marks are trade marks of ' +
-  "Formula One Licensing B.V. No team's car is depicted; the model is generic, built from the published 2026 dimensions.";
+  "Formula One Licensing B.V. No team's car is depicted: the body is a concept design, and the power unit and cockpit inside it are simplified stand-ins.";
 
 type Kind = 'estimate' | 'reg' | 'phys' | 'result';
 
@@ -295,12 +295,25 @@ export function createAbout(stations: StationMeta[]): AboutDialog {
     ),
   ]);
 
+  const link = (text: string, href: string) => h('a', { text, attrs: { href, target: '_blank', rel: 'noopener' } });
+  const credits = section('14', 'Credits', [
+    h('p', 'about-credit', [
+      'This work is based on “',
+      link('F1 2026 concept (polygon model)', 'https://sketchfab.com/3d-models/f1-2026-concept-polygon-model-ea3bde709b1e4dc9b0ec8557d106ed42'),
+      '” by ',
+      link('Qvist_designs', 'https://sketchfab.com/Qvist_Designs'),
+      ', licensed under ',
+      link('CC-BY-4.0', 'http://creativecommons.org/licenses/by/4.0/'),
+      '. Changes: the body was split into parts, simplified and given a plain matte finish; the power unit, battery, gearbox and driver were added.',
+    ]),
+  ]);
+
   const key = (keys: string[], what: string) =>
     h('div', 'key-row', [
       h('span', 'keys', keys.flatMap((k, i) => [i ? h('span', { class: 'key-or', text: 'or' }) : null, h('kbd', { text: k })])),
       h('span', { text: what }),
     ]);
-  const shortcuts = section('14', 'Keyboard', [
+  const shortcuts = section('15', 'Keyboard', [
     h('div', 'keys-grid', [
       key(stations.map((_, i) => String(i + 1)), 'Switch station'),
       key(['Space'], 'Play / pause the speed sweep or the lap'),
@@ -323,7 +336,7 @@ export function createAbout(stations: StationMeta[]): AboutDialog {
   const title = h('h2', { class: 'about-title', text: 'How it works', attrs: { id: 'about-title' } });
   const body = h('div', { class: 'about-body', attrs: { tabindex: '-1', autofocus: '' } }, [
     ...groupEls,
-    h('div', 'about-group about-group--shared', [sources, shortcuts]),
+    h('div', 'about-group about-group--shared', [sources, credits, shortcuts]),
     p(DISCLAIMER, 'about-disclaimer'),
   ]);
   const el = h('dialog', { class: 'about', attrs: { 'aria-labelledby': 'about-title' } }, [

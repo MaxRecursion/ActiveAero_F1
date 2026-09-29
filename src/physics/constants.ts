@@ -92,7 +92,8 @@ export interface AeroSurface {
  * cdA 1.1 m² gives Straight Mode cdA ≈ 0.9 m² (≈ -18%). With the estimated power the model tops out
  * at ≈338.5 km/h in Straight Mode, a calibration target near the 341 km/h reported for Monza 2026
  * qualifying, not a reproduction of it.
- * Surface split gives ≈46% front aero balance, typical of a high-downforce set-up.
+ * Surface split gives ≈46% front aero balance, typical of a high-downforce set-up. The wing centres of
+ * pressure are the measured mid-chords of the real body model's wings; the floor's is set to hold that balance.
  */
 export const ESTIMATES = {
   clA: 3.2,
@@ -120,9 +121,9 @@ export const ESTIMATES = {
   /** Battery charge when a lap starts (the simulation repeats laps until this settles). */
   startChargeMJ: 2,
   surfaces: [
-    { id: 'frontWing', label: 'Front wing', share: 0.22, cpX: 2.4 },
-    { id: 'floor', label: 'Floor', share: 0.53, cpX: -0.15 },
-    { id: 'rearWing', label: 'Rear wing', share: 0.25, cpX: -2.3 },
+    { id: 'frontWing', label: 'Front wing', share: 0.22, cpX: 2.81 },
+    { id: 'floor', label: 'Floor', share: 0.53, cpX: -0.45 },
+    { id: 'rearWing', label: 'Rear wing', share: 0.25, cpX: -2.0 },
   ] as const satisfies readonly AeroSurface[],
 } as const;
 

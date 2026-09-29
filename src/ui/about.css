@@ -184,13 +184,15 @@
   width: 7px;
   border-top: 1px solid var(--ink-2);
 }
-.about-sources a {
+.about-sources a,
+.about-credit a {
   color: var(--ink);
   text-decoration: underline;
   text-decoration-color: var(--rule-strong);
   text-underline-offset: 3px;
 }
-.about-sources a:hover { text-decoration-color: var(--ink); }
+.about-sources a:hover,
+.about-credit a:hover { text-decoration-color: var(--ink); }
 
 .keys-grid {
   display: grid;

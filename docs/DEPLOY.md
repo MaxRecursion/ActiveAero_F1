@@ -41,7 +41,7 @@ ask fan projects not to use its marks in names or domains), e.g. `unseen-aero` �
   - `/models/*` cached for a day with background revalidation (the model keeps a fixed name),
   - security headers on every response: `nosniff`, a strict referrer policy, a locked-down `Permissions-Policy`,
     `COOP same-origin`, and a Content-Security-Policy that only allows the site's own files. `'wasm-unsafe-eval'` is there
-    for the meshopt model decoder (WebAssembly); `style-src 'unsafe-inline'` covers the inline styles the 3D label layer sets.
+    for the meshopt model decoder (WebAssembly); `style-src 'unsafe-inline'` covers the inline styles the 3D label layer sets; `font-src data:` covers the tiny font subsets Vite inlines.
 - Routing is hash-based (`#/downforce`, `#/active-aero`, `#/energy`), so no `_redirects` or SPA fallback is needed.
 - Vite `base: './'`, so the build also works from any sub-path.
 
@@ -49,7 +49,7 @@ ask fan projects not to use its marks in names or domains), e.g. `unseen-aero` �
 
 | Limit | Value | UNSEEN today |
 |-------|-------|--------------|
-| Max file size | 25 MiB | largest file: car model ≈ 3 MB target; JS bundle 1.0 MB (272 KB gzip) |
+| Max file size | 25 MiB | largest file: car model 1.2 MB; JS bundle 1.1 MB (296 KB gzip) |
 | Files per deploy | 20,000 | ≈ 50 |
 | Builds per month | 500 | — |
 | Bandwidth | unmetered for static assets | — |
@@ -58,7 +58,7 @@ Keep `models/source/` (the 40 MB original) out of the repo — it is git-ignored
 
 ## Before the first production deploy
 
-- [ ] Real car body integrated and `car.glb` ≤ 3 MB
+- [x] Real car body integrated and `car.glb` ≤ 3 MB (1.2 MB)
 - [ ] `npm run build && npx wrangler pages dev dist` locally — confirms `_headers` + CSP don't block anything
 - [ ] Preview deploy checked on desktop Chrome/Safari/Firefox and a phone (WebGL 2 required)
 - [ ] Open Graph image (`og:image`) for link previews

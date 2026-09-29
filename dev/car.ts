@@ -1,5 +1,5 @@
 /**
- * Dev page: the procedural car on a plain floor.
+ * Dev page: the car (the real model by default, ?procedural=1 for the procedural one) on a plain floor.
  * Params: ?explode=0..1 &aero=0..1 &xray=0..1 &spin=radians &drop=metres &highlight=frontWing,floor
  *         &anchors=1 (coloured spheres at every anchor) &hide=bodywork,… &view=… (see harness)
  *         &cam=px,py,pz,tx,ty,tz (a custom camera for close-ups)
@@ -8,13 +8,17 @@
 import * as THREE from 'three';
 import { createHarness, num, params } from './harness';
 import { buildCar } from '../src/scene/car/buildCar';
+import { loadCar } from '../src/scene/car/loadCar';
 import { createWindTunnel } from '../src/scene/effects/tunnel';
 import { PALETTE } from '../src/scene/palette';
 import type { CarAnchors, PartId } from '../src/scene/car/types';
 
 const inTunnel = params.get('tunnel') === '1';
+// Load before the harness starts so its ready flag means the car is on screen.
+const t0 = performance.now();
+const car = params.get('procedural') === '1' ? buildCar() : await loadCar();
+const loadMs = Math.round(performance.now() - t0);
 const stage = createHarness({ plainFloor: !inTunnel });
-const car = buildCar();
 stage.scene.add(car.root);
 if (inTunnel) {
   const tunnel = createWindTunnel();
@@ -76,6 +80,8 @@ const fmt = (v: THREE.Vector3) =>
     .map((n) => n.toFixed(2))
     .join(', ');
 console.info(
-  `[car] ${Math.round(triangles)} triangles, ${meshes} meshes (draw calls), ${car.exteriorMeshes.length} exterior; ` +
-    `bounds min (${fmt(box.min)}) max (${fmt(box.max)})`,
+  `[car] loaded in ${loadMs} ms: ${Math.round(triangles)} triangles, ${meshes} meshes (draw calls), ` +
+    `${car.exteriorMeshes.length} exterior; bounds min (${fmt(box.min)}) max (${fmt(box.max)})`,
 );
+const anchorWorld = Object.entries(car.anchors).map(([name, o]) => `${name} (${fmt(o.getWorldPosition(new THREE.Vector3()))})`);
+console.info(`[car] anchors: ${anchorWorld.join('; ')}`);

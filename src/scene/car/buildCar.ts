@@ -1,13 +1,11 @@
 /**
  * The procedural 2026 car: a clay wind-tunnel model assembled from parts (see ./types.ts for the
- * contract and dimensions). Each part is one Object3D whose origin is its assembled position, so
- * explode, ride height, highlight and X-ray are cheap per-frame transforms, uniform changes and
- * material swaps.
+ * contract and dimensions). The part registry and per-frame controls (explode, ride height,
+ * highlight, X-ray) are shared with the real-model car, see ./rig.ts.
  */
 import * as THREE from 'three';
 import { CAR_FRAME, ESTIMATES } from '../../physics/constants';
 import { AXLE_X, FLOOR_Y, TYRE } from './dims';
-import { PartMaterials } from './materials';
 import { buildBodywork, engineCoverTop } from './parts/bodywork';
 import { buildNose, buildSurvivalCell } from './parts/chassis';
 import { buildDriver, buildHalo } from './parts/cockpit';
@@ -23,10 +21,8 @@ import {
 import { buildSuspension } from './parts/suspension';
 import { buildWheel } from './parts/wheels';
 import { buildFrontWing, buildRearWing, type Flap } from './parts/wings';
-import type { CarAnchors, CarModel, CarPart, PartGroup, PartId } from './types';
-import { XrayShell } from './xray';
-
-type V3 = THREE.Vector3Tuple;
+import { CarAssembly } from './rig';
+import type { CarAnchors, CarModel, PartId } from './types';
 
 /** The parts that turn to a ghost under X-ray; everything else stays solid. */
 const SHELL: readonly PartId[] = ['nose', 'bodywork', 'survivalCell', 'halo', 'driver'];
@@ -34,49 +30,9 @@ const SHELL: readonly PartId[] = ['nose', 'bodywork', 'survivalCell', 'halo', 'd
 /** How far the two halves of each suspension spread apart (each side, metres) at full explode. */
 const SUSPENSION_SPREAD = 0.24;
 
-interface Entry extends CarPart {
-  materials: PartMaterials;
-  /** Share of the ride-height drop this part follows: 1 sprung, 0.5 suspension, 0 wheels. */
-  dropShare: number;
-}
-
 export function buildCar(): CarModel {
-  const root = new THREE.Group();
-  root.name = 'car';
-  const parts = new Map<PartId, CarPart>();
-  const entries: Entry[] = [];
-  const exteriorMeshes: THREE.Mesh[] = [];
-
-  function add<T extends THREE.Object3D>(
-    id: PartId,
-    label: string,
-    group: PartGroup,
-    offset: V3,
-    build: (mats: PartMaterials) => T,
-    { dropShare = 1, exterior = true } = {},
-  ): T {
-    const materials = new PartMaterials();
-    const object = build(materials);
-    object.name = id;
-    root.add(object);
-    const entry: Entry = {
-      id,
-      label,
-      group,
-      object,
-      explodeOffset: new THREE.Vector3(...offset),
-      materials,
-      dropShare,
-    };
-    entries.push(entry);
-    parts.set(id, entry);
-    if (exterior) {
-      object.traverse((o) => {
-        if (o instanceof THREE.Mesh) exteriorMeshes.push(o);
-      });
-    }
-    return object;
-  }
+  const car = new CarAssembly();
+  const { add, anchor } = car;
 
   // Explode offsets: the tub and floor stay put as the reference; the bodywork lifts highest so the
   // floor's top and the power unit show; wings slide off fore and aft; wheels move out along
@@ -128,7 +84,7 @@ export function buildCar(): CarModel {
     );
   }
 
-  const suspensionSides: [half: THREE.Group, side: 1 | -1][] = [];
+  const halves: [THREE.Group, 1 | -1][] = [];
   for (const [id, label, axle] of [
     ['suspensionFront', 'Front suspension', 'front'],
     ['suspensionRear', 'Rear suspension', 'rear'],
@@ -140,7 +96,7 @@ export function buildCar(): CarModel {
       [0, 0, 0],
       (m) => {
         const s = buildSuspension(m, axle);
-        suspensionSides.push([s.sides[0], 1], [s.sides[1], -1]);
+        halves.push([s.sides[0], 1], [s.sides[1], -1]);
         return s.group;
       },
       { dropShare: 0.5 },
@@ -153,13 +109,6 @@ export function buildCar(): CarModel {
   const battery = add('battery', 'Battery', 'powertrain', [0, 0.6, 0], buildBattery, { exterior: false });
   const gearbox = add('gearbox', 'Gearbox', 'powertrain', [-0.3, 0.22, 0], buildGearbox);
 
-  const anchor = (parent: THREE.Object3D, name: string, p: THREE.Vector3Like): THREE.Object3D => {
-    const o = new THREE.Object3D();
-    o.name = `anchor:${name}`;
-    o.position.copy(p);
-    parent.add(o);
-    return o;
-  };
   const anchors: CarAnchors = {
     frontWingCP: anchor(frontWing, 'frontWingCP', frontCP),
     floorCP: anchor(floor, 'floorCP', { x: -0.15, y: FLOOR_Y.top, z: 0 }),
@@ -173,54 +122,13 @@ export function buildCar(): CarModel {
     rearAxle: anchor(gearbox, 'rearAxle', { x: AXLE_X.rear, y: TYRE.rear.radius, z: 0 }),
   };
 
-  const xray = new XrayShell(entries.filter((e) => SHELL.includes(e.id)));
-
-  let explode = 0;
-  let drop = 0;
-  function place(): void {
-    for (const e of entries) {
-      e.object.position.copy(e.explodeOffset).multiplyScalar(explode);
-      e.object.position.y -= drop * e.dropShare;
-    }
-    for (const [half, side] of suspensionSides) half.position.z = side * SUSPENSION_SPREAD * explode;
-  }
-
-  return {
-    root,
-    parts,
+  return car.toModel({
     anchors,
-    exteriorMeshes,
-    setExplode(t) {
-      explode = THREE.MathUtils.clamp(t, 0, 1);
-      place();
-    },
-    setWheelSpin(angle) {
-      // Rolling toward +X turns the wheel clockwise seen from +Z: a negative rotation about Z.
-      for (const s of spinners) s.rotation.z = -angle;
-    },
-    setRideHeightDrop(metres) {
-      drop = metres;
-      place();
-    },
-    setActiveAero(t) {
-      const k = THREE.MathUtils.clamp(t, 0, 1);
+    shell: SHELL,
+    spinners,
+    spread: { halves, amount: SUSPENSION_SPREAD },
+    setActiveAero(k) {
       for (const f of flaps) f.pivot.rotation.z = f.open * k;
     },
-    setHighlight(ids) {
-      for (const e of entries)
-        e.materials.setEmphasis(ids === null ? 'none' : ids.includes(e.id) ? 'on' : 'faded');
-    },
-    setXray(t) {
-      xray.set(t);
-    },
-    dispose() {
-      root.removeFromParent();
-      root.traverse((o) => {
-        if (o instanceof THREE.Mesh) o.geometry.dispose();
-      });
-      for (const e of entries) e.materials.dispose();
-      parts.clear();
-      exteriorMeshes.length = 0;
-    },
-  };
+  });
 }

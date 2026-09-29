@@ -1,6 +1,9 @@
 import './styles/tokens.css';
 import { startApp } from './app/app';
-import { createStage } from './scene/stage';
+import { buildCar } from './scene/car/buildCar';
+import { loadCar } from './scene/car/loadCar';
+import type { CarModel } from './scene/car/types';
+import { createStage, type Stage } from './scene/stage';
 
 declare global {
   interface Window {
@@ -21,11 +24,19 @@ const mount = document.getElementById('stage')!;
 const uiRoot = document.getElementById('ui')!;
 const boot = document.getElementById('boot')!;
 
-if (!hasWebGL2()) {
-  boot.textContent = 'This explainer needs WebGL 2, which this browser or device has turned off.';
-} else {
-  const stage = createStage({ mount });
-  startApp(stage, uiRoot);
+/** The real body if the model loads; the procedural car keeps the page working if it does not. */
+async function getCar(): Promise<CarModel> {
+  try {
+    return await loadCar();
+  } catch (err) {
+    console.warn('Car model failed to load, using the procedural car.', err);
+    return buildCar();
+  }
+}
+
+async function start(stage: Stage) {
+  const car = await getCar();
+  startApp(stage, uiRoot, car);
   let frames = 0;
   const off = stage.onFrame(() => {
     if (++frames < 3) return;
@@ -34,4 +45,10 @@ if (!hasWebGL2()) {
     off();
   });
   stage.start();
+}
+
+if (!hasWebGL2()) {
+  boot.textContent = 'This explainer needs WebGL 2, which this browser or device has turned off.';
+} else {
+  void start(createStage({ mount }));
 }

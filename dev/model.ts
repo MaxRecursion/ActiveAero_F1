@@ -11,6 +11,13 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { createHarness, num, params } from './harness';
 
+declare global {
+  interface Window {
+    /** Set once the model is in the scene (scripts/model/views.mjs waits for it). */
+    __modelLoaded?: boolean;
+  }
+}
+
 const stage = createHarness({ plainFloor: true });
 stage.controls.minDistance = 0.2; // close-ups of wing elements
 const cam = params.get('cam')?.split(',').map(Number);
@@ -24,6 +31,11 @@ if (params.get('grid') !== '0') {
   axes.position.y = 0.004;
   stage.scene.add(axes);
 }
+
+const clips: THREE.Plane[] = [];
+if (params.has('clipz')) clips.push(new THREE.Plane(new THREE.Vector3(0, 0, -1), num('clipz', 0)));
+if (params.has('clipx')) clips.push(new THREE.Plane(new THREE.Vector3(-1, 0, 0), num('clipx', 0)));
+stage.renderer.clippingPlanes = clips;
 
 const src = params.get('src') ?? 'source';
 const url =
@@ -98,4 +110,5 @@ loader.load(url, (gltf) => {
   } else {
     stage.scene.add(model);
   }
+  window.__modelLoaded = true;
 });

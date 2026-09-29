@@ -15,7 +15,7 @@ import type { Station, StationContext } from '../types';
 import { captionFor, PRESETS } from './content';
 
 /** High rear three-quarter: both wings in view, rear flap opening toward the camera. */
-const SHOT: Shot = { position: [-6.26, 3.39, 7.68], target: [0.1, 0.45, 0] };
+const SHOT: Shot = { position: [-7.7, 4.0, 9.6], target: [0.1, 0.5, 0] };
 
 export const ACTIVE_AERO_CONFIG: StationUIConfig = {
   meta: {

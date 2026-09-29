@@ -7,7 +7,19 @@ import * as THREE from 'three';
 import { PALETTE } from '../palette';
 
 export type MatKey =
-  'clay' | 'clayDark' | 'carbon' | 'carbonLight' | 'tyre' | 'rim' | 'metal' | 'engine' | 'helmet' | 'visor';
+  | 'clay'
+  | 'clayDark'
+  | 'shellClay'
+  | 'shellCarbon'
+  | 'carbon'
+  | 'carbonLight'
+  | 'tyre'
+  | 'tyrePlain'
+  | 'rim'
+  | 'metal'
+  | 'engine'
+  | 'helmet'
+  | 'visor';
 
 interface Spec extends THREE.MeshStandardMaterialParameters {
   /** Geometry carries per-vertex tints multiplied onto `color` (dark cockpit, intakes, sidewalls). */
@@ -17,9 +29,14 @@ interface Spec extends THREE.MeshStandardMaterialParameters {
 const SPECS: Record<MatKey, Spec> = {
   clay: { color: PALETTE.clay, roughness: 0.74, vertexColors: true },
   clayDark: { color: PALETTE.clayDark, roughness: 0.78 },
+  // The real-model shell has no per-vertex tints, so its finishes are flat. Its panels are open
+  // sheets (the floor has no top face), so they draw both sides or the ground shows through.
+  shellClay: { color: PALETTE.clay, roughness: 0.74, side: THREE.DoubleSide },
+  shellCarbon: { color: PALETTE.carbon, roughness: 0.5, metalness: 0.08, side: THREE.DoubleSide },
   carbon: { color: PALETTE.carbon, roughness: 0.5, metalness: 0.08 },
   carbonLight: { color: PALETTE.carbonLight, roughness: 0.58, metalness: 0.05 },
   tyre: { color: 0xffffff, roughness: 0.9, vertexColors: true },
+  tyrePlain: { color: PALETTE.tyre, roughness: 0.9 },
   rim: { color: PALETTE.rim, roughness: 0.4, metalness: 0.55 },
   metal: { color: PALETTE.metal, roughness: 0.3, metalness: 0.75 },
   engine: { color: PALETTE.metal, roughness: 0.48, metalness: 0.45 },
@@ -51,7 +68,8 @@ const GHOST_TONE = new THREE.Color(0x55524c);
  * in from the plain finish; every ghost shares one program.
  */
 function createGhost(spec: Spec): THREE.MeshStandardMaterial {
-  const m = new THREE.MeshStandardMaterial({ ...spec, transparent: true });
+  // Front faces only: a two-sided ghost would show the shell's far wall through its near one.
+  const m = new THREE.MeshStandardMaterial({ ...spec, side: THREE.FrontSide, transparent: true });
   const amount = { value: 0 };
   m.userData.ghost = amount;
   m.onBeforeCompile = (shader) => {

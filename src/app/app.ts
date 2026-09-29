@@ -5,6 +5,7 @@
  */
 import * as THREE from 'three';
 import { SPEED_RANGE_KMH } from '../physics/constants';
+import type { CarModel } from '../scene/car/types';
 import { prefersReducedMotion, type Stage } from '../scene/stage';
 import { ACTIVE_AERO_CONFIG, createActiveAeroStation } from '../stations/activeAero/station';
 import { createDownforceStation, DOWNFORCE_CONFIG } from '../stations/downforce/station';
@@ -34,9 +35,9 @@ function stationFromHash(): StationId | null {
   return hit ? hit[0] : null;
 }
 
-export function startApp(stage: Stage, uiRoot: HTMLElement) {
+export function startApp(stage: Stage, uiRoot: HTMLElement, car: CarModel) {
   const reducedMotion = prefersReducedMotion();
-  const garage = createGarage(stage);
+  const garage = createGarage(stage, car);
 
   const speed = { target: 0, kmh: 0 };
   let sweep: null | { t: number; loop: boolean; from: number; to: number; duration: number } = null;

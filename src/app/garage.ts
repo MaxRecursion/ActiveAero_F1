@@ -12,7 +12,6 @@ import * as THREE from 'three';
 import type { AeroState } from '../physics/aero';
 import { CAR_FRAME, REGS, SPEED_RANGE_KMH } from '../physics/constants';
 import { aeroState } from '../physics/aero';
-import { buildCar } from '../scene/car/buildCar';
 import type { CarModel, PartId } from '../scene/car/types';
 import { createAirflow } from '../scene/effects/airflow';
 import { createEnergyFlow } from '../scene/effects/energyFlow';
@@ -73,9 +72,8 @@ export interface Garage {
   dispose(): void;
 }
 
-export function createGarage(stage: Stage): Garage {
+export function createGarage(stage: Stage, car: CarModel): Garage {
   const reducedMotion = prefersReducedMotion();
-  const car = buildCar();
   const tunnel = createWindTunnel();
   const airflow = createAirflow({ car });
   const forces = createForceArrows({ car, metresPerNewton: METRES_PER_NEWTON, formatForce: fmtKN });
