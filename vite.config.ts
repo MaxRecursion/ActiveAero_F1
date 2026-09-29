@@ -27,6 +27,10 @@ export default defineConfig({
   build: {
     target: 'es2022',
     chunkSizeWarningLimit: 900,
+    // three.js changes rarely; its own file stays cached across app deploys.
+    rolldownOptions: {
+      output: { codeSplitting: { groups: [{ name: 'three', test: /node_modules[\\/]three[\\/]/ }] } },
+    },
   },
   test: {
     include: ['src/**/*.test.ts'],
