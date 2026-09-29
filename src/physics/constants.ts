@@ -120,6 +120,28 @@ export const ESTIMATES = {
   rearAxleShare: 0.55,
   /** Battery charge when a lap starts (the simulation repeats laps until this settles). */
   startChargeMJ: 2,
+  /**
+   * Brakes (Station 4). Teams publish none of this; the numbers are round guesses inside the ranges
+   * reported for carbon-carbon brakes (working window 350–550 °C, peaks above 1000 °C).
+   */
+  brakes: {
+    /** A brake zone ends at this speed: a slow corner. */
+    apexKmh: 80,
+    /** Disc temperature when the driver first touches the pedal. */
+    startDiscC: 450,
+    ambientC: 30,
+    frontDiscKg: 1.3,
+    rearDiscKg: 1.1,
+    /** Carbon-carbon at working temperature, J/(kg·K). */
+    discSpecificHeat: 1300,
+    /** Share of a wheel's brake heat that goes into its disc; pads, caliper, hub and cooling air take the rest. */
+    discHeatShare: 0.85,
+    /** Cooling of one disc by its duct, W per kelvin above the air. */
+    discCoolingWPerK: 60,
+    /** Ride rate of each axle, N per mm of squat (suspension and tyres together). */
+    frontAxleRateNPerMm: 300,
+    rearAxleRateNPerMm: 250,
+  },
   surfaces: [
     { id: 'frontWing', label: 'Front wing', share: 0.22, cpX: 2.81 },
     { id: 'floor', label: 'Floor', share: 0.53, cpX: -0.45 },
