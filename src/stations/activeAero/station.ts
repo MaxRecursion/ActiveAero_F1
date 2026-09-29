@@ -8,7 +8,7 @@
  */
 import { aeroState, modeCoefficients } from '../../physics/aero';
 import { ESTIMATES, PHYS, REGS } from '../../physics/constants';
-import { availablePowerW, mguKLimitKw, requiredPowerW, topSpeedKmh } from '../../physics/powertrain';
+import { availablePowerW, mguKLimitKw, powerStatus, requiredPowerW, topSpeedKmh } from '../../physics/powertrain';
 import type { Shot } from '../../scene/stage';
 import type { AeroMode, StationUIConfig } from '../../ui/types';
 import type { Station, StationContext } from '../types';
@@ -16,8 +16,6 @@ import { captionFor, PRESETS } from './content';
 
 /** High rear three-quarter: both wings in view, rear flap opening toward the camera. */
 const SHOT: Shot = { position: [-6.26, 3.39, 7.68], target: [0.1, 0.45, 0] };
-/** Within this fraction, needed and available power count as equal ("at top speed"). */
-const REACH_TOLERANCE = 0.015;
 
 export const ACTIVE_AERO_CONFIG: StationUIConfig = {
   meta: {
@@ -73,6 +71,7 @@ export function createActiveAeroStation({ garage, ui }: StationContext): Station
       const corner = aeroState(kmh);
       const need = requiredPowerW(kmh, t);
       const have = availablePowerW(kmh);
+      const status = powerStatus({ requiredPowerW: need.totalW, availablePowerW: have });
       ui.render({
         station: 'activeAero',
         view: {
@@ -91,8 +90,7 @@ export function createActiveAeroStation({ garage, ui }: StationContext): Station
           iceKw: ESTIMATES.iceKw,
           topSpeedCornerKmh: topCornerKmh,
           topSpeedStraightKmh: topStraightKmh,
-          reachable: need.totalW <= have * (1 + REACH_TOLERANCE),
-          caption: captionFor({ kmh, mode: state.mode, straightT: t, topCornerKmh, topStraightKmh }),
+          caption: captionFor({ kmh, mode: state.mode, straightT: t, status, topCornerKmh, topStraightKmh }),
         },
       });
     },

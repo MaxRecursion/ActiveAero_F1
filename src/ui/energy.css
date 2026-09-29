@@ -297,6 +297,11 @@
   width: calc(var(--w, 0) * 100%);
   background: var(--engine);
 }
+.eng-fill--batt {
+  left: calc(var(--x, 0) * 100%);
+  width: calc(var(--w, 0) * 100%);
+  background: var(--energy);
+}
 .eng-val {
   font: 500 13px/1 var(--font-num);
   font-variant-numeric: tabular-nums;

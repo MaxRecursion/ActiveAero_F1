@@ -356,6 +356,23 @@
   border-color: rgb(255 255 255 / 0.28);
   color: rgb(255 255 255 / 0.75);
 }
+/* Unavailable: still focusable and announced, but visibly out of play; the on/off LED keeps the remembered state. */
+.toggle[aria-disabled='true'],
+.toggle[aria-disabled='true']:hover {
+  background: transparent;
+  border: 1px dashed var(--rule-strong);
+  color: var(--ink-3);
+  cursor: not-allowed;
+}
+.toggle[aria-disabled='true'] .toggle-led {
+  background: transparent;
+  border-color: var(--ink-3);
+}
+.toggle[aria-disabled='true'][aria-pressed='true'] .toggle-led { background: var(--ink-3); }
+.ui-dock .toggle[aria-disabled='true'] kbd {
+  border-color: var(--rule-strong);
+  color: var(--ink-3);
+}
 .drawer-btns {
   display: flex;
   gap: 6px;

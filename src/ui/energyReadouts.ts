@@ -27,7 +27,7 @@ const HARVEST_SCALE = 1.12;
 const IDLE_KW = 0.5;
 
 type Dir = 'deploy' | 'harvest' | 'idle';
-const DIR_TEXT: Record<Dir, string> = { deploy: '→ to the wheels', harvest: '→ into the battery', idle: 'idle' };
+const DIR_TEXT: Record<Dir, string> = { deploy: '→ wheels', harvest: '→ battery', idle: 'idle' };
 
 const label = (text: string, extra: Node[] = []) =>
   h('span', 'micro ro-label', [h('i', { class: 'swatch', attrs: { 'aria-hidden': 'true' } }), text, ...extra]);
@@ -66,13 +66,14 @@ export function createEnergyReadouts(): EnergyReadouts {
   const flow = h('span', { class: 'flow-track', attrs: { 'aria-hidden': 'true' } }, [flowFill, h('span', 'flow-mid')]);
   const engineNum = h('span', 'eng-num');
   const engineFill = h('span', 'eng-fill');
+  const engineToBatt = h('span', 'eng-fill eng-fill--batt');
   const motor = h('div', { class: 'ro ro--motor', attrs: { 'data-dir': 'idle' } }, [
     label('Motor', [h('span', { class: 'ro-label-aside', text: `≤ ${REGS.mguKMaxKw.value} kW` })]),
     h('span', 'ro-value', [motorNum, h('span', { class: 'ro-unit', text: 'kW' }), motorDir]),
     flow,
-    h('span', 'eng-row', [
+    h('span', { class: 'eng-row', attrs: { title: 'Engine output, before driveline losses: slate goes to the wheels, green into the battery while super clipping.' } }, [
       h('span', 'eng-label', [h('i', { class: 'swatch', attrs: { 'aria-hidden': 'true' } }), 'Engine']),
-      h('span', { class: 'eng-track', attrs: { 'aria-hidden': 'true' } }, [engineFill]),
+      h('span', { class: 'eng-track', attrs: { 'aria-hidden': 'true' } }, [engineFill, engineToBatt]),
       h('span', 'eng-val', [engineNum, h('span', { class: 'meter-unit', text: ' kW' })]),
     ]),
   ]);
@@ -82,6 +83,8 @@ export function createEnergyReadouts(): EnergyReadouts {
   const setFlowR = styleSlot(flowFill, '--r');
   const setEngine = textSlot(engineNum);
   const setEngineW = styleSlot(engineFill, '--w');
+  const setEngineBattX = styleSlot(engineToBatt, '--x');
+  const setEngineBattW = styleSlot(engineToBatt, '--w');
 
   // ── this lap: recovered (brakes + super clipping) and used, against the cap ──────
   const capPct = `${((1 / HARVEST_SCALE) * 100).toFixed(2)}%`;
@@ -186,7 +189,12 @@ export function createEnergyReadouts(): EnergyReadouts {
       setFlowL((Math.min(1, Math.max(0, -kw / max)) * 0.5).toFixed(4));
       setFlowR((Math.min(1, Math.max(0, kw / max)) * 0.5).toFixed(4));
       setEngine(fmtKW(v.engineKw * 1000));
-      setEngineW(Math.min(1, Math.max(0, v.engineKw / ESTIMATES.iceKw)).toFixed(4));
+      // While super clipping the rest of the engine's power charges the battery: green in the bar, and the motor reads −kW.
+      const toBatt = v.phase === 'clip' ? Math.max(0, -kw) : 0;
+      const toWheels = Math.min(1, Math.max(0, v.engineKw / ESTIMATES.iceKw));
+      setEngineW(toWheels.toFixed(4));
+      setEngineBattX(toWheels.toFixed(4));
+      setEngineBattW(Math.min(1 - toWheels, toBatt / ESTIMATES.iceKw).toFixed(4));
 
       const scale = L.harvestCapMJ * HARVEST_SCALE;
       const rec = Math.max(0, v.harvestedMJ);

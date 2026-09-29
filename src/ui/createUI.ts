@@ -20,7 +20,7 @@ import './energy.css';
 import type { Insets } from '../scene/stage';
 import type { AeroMode, StationId, StationUIConfig, ToggleId, UI, UIOptions } from './types';
 import { h } from './dom';
-import { fmtKmh } from './format';
+import { fmtKmh, fmtKmhAtLeast } from './format';
 import { icon, type IconName } from './icons';
 import { createAbout } from './about';
 import { createAeroReadouts } from './aeroReadouts';
@@ -141,17 +141,20 @@ export function createUI(opts: UIOptions): UI {
   };
   const panelEls = new Set(Object.values(panels).flat());
 
-  const toggleState = new Map<ToggleId, { btn: HTMLButtonElement; on: boolean }>();
+  const toggleState = new Map<ToggleId, { btn: HTMLButtonElement; hint: HTMLElement; on: boolean; available: boolean }>();
   const toggleRow = h('div', { class: 'toggles', attrs: { role: 'group', 'aria-label': 'Show' } });
   for (const [id, t] of Object.entries(TOGGLES) as [ToggleId, (typeof TOGGLES)[ToggleId]][]) {
+    // Referenced by aria-describedby, so it stays hidden yet is read out while the toggle is unavailable.
+    const hint = h('span', { attrs: { hidden: '', id: `toggle-hint-${id}` } });
     const btn = h('button', { class: 'toggle', attrs: { type: 'button', 'aria-pressed': 'false', 'aria-keyshortcuts': t.key } }, [
       h('i', { class: 'toggle-led', attrs: { 'aria-hidden': 'true' } }),
       h('span', { class: 'toggle-label', text: t.label }),
       t.short ? h('span', { class: 'toggle-short', text: t.short, attrs: { 'aria-hidden': 'true' } }) : null,
       h('kbd', { class: 'toggle-key', text: t.key, attrs: { 'aria-hidden': 'true' } }),
+      hint,
     ]);
     btn.dataset.toggle = id;
-    toggleState.set(id, { btn, on: false });
+    toggleState.set(id, { btn, hint, on: false, available: true });
   }
 
   // Drawers: on small screens the numbers and the chart open on demand, one at a time.
@@ -234,7 +237,24 @@ export function createUI(opts: UIOptions): UI {
     t.on = on;
     t.btn.setAttribute('aria-pressed', String(on));
   }
+  function setToggleAvailable(id: ToggleId, available: boolean, reason = '') {
+    const t = toggleState.get(id);
+    if (!t) return;
+    if (available) reason = '';
+    if (t.available === available && t.hint.textContent === reason) return;
+    t.available = available;
+    if (available) {
+      for (const attr of ['aria-disabled', 'aria-describedby', 'title']) t.btn.removeAttribute(attr);
+      t.hint.textContent = '';
+    } else {
+      t.btn.setAttribute('aria-disabled', 'true');
+      t.btn.setAttribute('aria-describedby', t.hint.id);
+      t.btn.title = reason;
+      t.hint.textContent = reason;
+    }
+  }
   function flipToggle(id: ToggleId) {
+    if (!toggleState.get(id)?.available) return;
     const on = !toggleState.get(id)?.on;
     setToggle(id, on);
     handlers.onToggle(id, on);
@@ -393,7 +413,7 @@ export function createUI(opts: UIOptions): UI {
       if (sv.station === 'downforce') {
         const v = sv.view;
         speed.render(v.speedKmh);
-        markers[0]?.set(v.ceilingSpeedKmh, `Ceiling ≈ ${fmtKmh(v.ceilingSpeedKmh)}`);
+        markers[0]?.set(v.ceilingSpeedKmh, `Ceiling ${fmtKmhAtLeast(v.ceilingSpeedKmh)}`);
         s1.read.render(v);
         s1.chart.render(v.speedKmh, v.downforceN, v.dragN);
         caption.render(v.caption);
@@ -419,6 +439,7 @@ export function createUI(opts: UIOptions): UI {
     },
     setSpeedControl: speed.setValue,
     setToggle,
+    setToggleAvailable,
     setAeroMode: modeSwitch.setMode,
     setPlaying,
     getInsets,

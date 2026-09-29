@@ -94,8 +94,6 @@ export interface Station2View {
   iceKw: number;
   topSpeedCornerKmh: number;
   topSpeedStraightKmh: number;
-  /** False when the car could not hold this speed on track in the current flap position. */
-  reachable: boolean;
   caption: CaptionRun[];
 }
 
@@ -186,6 +184,11 @@ export interface UI {
   /** Move the speed control without firing onSpeedInput (used while a sweep animates). */
   setSpeedControl(kmh: number): void;
   setToggle(id: ToggleId, on: boolean): void;
+  /**
+   * Mark a toggle unavailable (kept focusable, announced with `reason`; clicks and its key do nothing)
+   * or available again. The toggle keeps its on/off state meanwhile. `reason` is required when unavailable.
+   */
+  setToggleAvailable(id: ToggleId, available: boolean, reason?: string): void;
   /** Reflect the commanded aero mode without firing onAeroMode. */
   setAeroMode(mode: AeroMode): void;
   setPlaying(playing: boolean): void;

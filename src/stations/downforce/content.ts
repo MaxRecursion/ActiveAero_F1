@@ -5,6 +5,7 @@
  * caption that rewrote itself on every slider tick would make the aria-live region chatter.
  */
 import type { AeroState } from '../../physics/aero';
+import { fmtKmhAtLeast } from '../../ui/format';
 import type { CaptionRun, SpeedPreset } from '../../ui/types';
 
 export const PRESETS: SpeedPreset[] = [
@@ -21,7 +22,8 @@ export interface CaptionContext {
   ceiling: 'off' | 'sticks' | 'falls';
 }
 
-const kmh = (v: number) => `${Math.round(v)} km/h`;
+/** Downforce grows with speed², so it reaches k × weight at ceilingSpeed × √k. */
+const speedForRatio = (ceilingKmh: number, ratio: number): number => ceilingKmh * Math.sqrt(ratio);
 
 export function captionFor({ aero, exploded, ceiling }: CaptionContext): CaptionRun[] {
   const v = aero.speedKmh;
@@ -32,15 +34,15 @@ export function captionFor({ aero, exploded, ceiling }: CaptionContext): Caption
       { text: 'Upside down, ' },
       { text: 'gravity', tone: 'weight' },
       { text: ' is winning: the air isn’t pushing hard enough to hold the car up. It needs ' },
-      { text: `about ${kmh(vc)}`, tone: 'down' },
+      { text: `at least ${fmtKmhAtLeast(vc)} km/h`, tone: 'down' },
       { text: '.' },
     ];
   }
   if (ceiling === 'sticks') {
     return [
-      { text: 'Above ' },
-      { text: `about ${kmh(vc)}`, tone: 'down' },
-      { text: ' the wings and floor push harder than ' },
+      { text: 'From ' },
+      { text: `${fmtKmhAtLeast(vc)} km/h`, tone: 'down' },
+      { text: ' up, the wings and floor push harder than ' },
       { text: 'gravity', tone: 'weight' },
       { text: ' pulls. In theory, the car could ' },
       { text: 'drive on this ceiling', tone: 'strong' },
@@ -84,7 +86,7 @@ export function captionFor({ aero, exploded, ceiling }: CaptionContext): Caption
   if (v <= vc + 15) {
     return [
       { text: 'Around ' },
-      { text: kmh(vc), tone: 'down' },
+      { text: `${fmtKmhAtLeast(vc)} km/h`, tone: 'down' },
       { text: ' the air pushes down as hard as ' },
       { text: 'gravity', tone: 'weight' },
       { text: ' pulls. Try the ' },
@@ -92,7 +94,7 @@ export function captionFor({ aero, exploded, ceiling }: CaptionContext): Caption
       { text: '.' },
     ];
   }
-  if (v < 300) {
+  if (v < speedForRatio(vc, 2)) {
     return [
       { text: 'Downforce now ' },
       { text: 'outweighs the car', tone: 'down' },
@@ -100,8 +102,8 @@ export function captionFor({ aero, exploded, ceiling }: CaptionContext): Caption
     ];
   }
   return [
-    { text: 'Near top speed the air presses down with ' },
-    { text: 'roughly twice the car’s weight', tone: 'down' },
+    { text: 'Now the air presses down with ' },
+    { text: 'more than twice the car’s weight', tone: 'down' },
     { text: '. But pushing through it costs ' },
     { text: 'drag power', tone: 'drag' },
     { text: ', which grows with speed³.' },

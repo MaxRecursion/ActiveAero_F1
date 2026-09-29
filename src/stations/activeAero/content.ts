@@ -4,7 +4,8 @@
  * Like Station 1, captions change by band (mode × where the speed sits relative to the two top
  * speeds), never every frame; live numbers belong to the readouts.
  */
-import { ESTIMATES } from '../../physics/constants';
+import { ESTIMATES, REGS } from '../../physics/constants';
+import type { PowerStatus } from '../../physics/powertrain';
 import type { AeroMode, CaptionRun, SpeedPreset } from '../../ui/types';
 
 export const PRESETS: SpeedPreset[] = [
@@ -18,19 +19,18 @@ export const PRESETS: SpeedPreset[] = [
 const pct = (factor: number) => `${Math.round((1 - factor) * 100)}%`;
 const DRAG_CUT = pct(ESTIMATES.straightMode.cdAFactor);
 const DOWNFORCE_CUT = pct(ESTIMATES.straightMode.clAFactor);
-/** Within this many km/h of a top speed we say "this is the top speed". */
-const AT_TOP_KMH = 3;
-
+const MOTOR_KW = `${REGS.mguKMaxKw.value} kW`;
 export interface CaptionContext {
   kmh: number;
   mode: AeroMode;
   /** Flap position 0–1; strictly between means the flaps are moving. */
   straightT: number;
+  status: PowerStatus;
   topCornerKmh: number;
   topStraightKmh: number;
 }
 
-export function captionFor({ kmh, mode, straightT, topCornerKmh, topStraightKmh }: CaptionContext): CaptionRun[] {
+export function captionFor({ kmh, mode, straightT, status, topCornerKmh, topStraightKmh }: CaptionContext): CaptionRun[] {
   // Same rounding as the readouts, so the caption's gain matches the numbers on screen.
   const gain = `${Math.round(topStraightKmh) - Math.round(topCornerKmh)} km/h`;
 
@@ -55,11 +55,11 @@ export function captionFor({ kmh, mode, straightT, topCornerKmh, topStraightKmh 
         { text: 'The power the air takes grows with ' },
         { text: 'speed³', tone: 'drag' },
         { text: '. Up to 290 km/h the electric motor may still give its ' },
-        { text: 'full 350 kW', tone: 'strong' },
+        { text: `full ${MOTOR_KW}`, tone: 'strong' },
         { text: '.' },
       ];
     }
-    if (kmh < topCornerKmh - AT_TOP_KMH) {
+    if (status === 'accelerating') {
       return [
         { text: 'Above 290 km/h the rules ' },
         { text: 'turn the electric motor down', tone: 'strong' },
@@ -68,7 +68,7 @@ export function captionFor({ kmh, mode, straightT, topCornerKmh, topStraightKmh 
         { text: ' keeps climbing. Try Straight Mode.' },
       ];
     }
-    if (kmh <= topCornerKmh + AT_TOP_KMH) {
+    if (status === 'top') {
       return [
         { text: 'Here the air takes every kilowatt the car has: ' },
         { text: `Corner Mode tops out near ${Math.round(topCornerKmh)} km/h`, tone: 'strong' },
@@ -92,7 +92,7 @@ export function captionFor({ kmh, mode, straightT, topCornerKmh, topStraightKmh 
       { text: '. That’s why Straight Mode only works in marked zones.' },
     ];
   }
-  if (kmh < topStraightKmh - AT_TOP_KMH) {
+  if (status === 'accelerating') {
     return [
       { text: 'Flaps open: ' },
       { text: `${DRAG_CUT} less drag`, tone: 'drag' },
@@ -103,7 +103,7 @@ export function captionFor({ kmh, mode, straightT, topCornerKmh, topStraightKmh 
       { text: '.' },
     ];
   }
-  if (kmh <= topStraightKmh + AT_TOP_KMH) {
+  if (status === 'top') {
     return [
       { text: 'Straight Mode tops out near ' },
       { text: `${Math.round(topStraightKmh)} km/h`, tone: 'strong' },
@@ -113,6 +113,6 @@ export function captionFor({ kmh, mode, straightT, topCornerKmh, topStraightKmh 
   return [
     { text: 'Even with the wings open the car ' },
     { text: 'runs out of power', tone: 'strong' },
-    { text: ' here: the motor’s allowance has faded to almost nothing (FIA C5.2.8).' },
+    { text: ` here: the motor’s allowance has shrunk to a fraction of its ${MOTOR_KW} (FIA C5.2.8).` },
   ];
 }

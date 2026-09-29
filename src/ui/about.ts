@@ -6,13 +6,13 @@
  */
 import { ESTIMATES, PHYS, REGS, SOURCES } from '../physics/constants';
 import { ceilingSpeedKmh } from '../physics/aero';
-import { simulateLap } from '../physics/lap';
-import { mguKLimitKw, topSpeedKmh } from '../physics/powertrain';
+import { BRAKE_RESERVE_J, CLIP_SECONDS_PER_LAP, simulateLap } from '../physics/lap';
+import { motorTaper, topSpeedKmh, type MotorTaper } from '../physics/powertrain';
 import { CIRCUIT_NAME } from '../physics/track';
 import { SLOW_MOTION_FACTOR } from '../scene/motion';
 import type { StationId, StationMeta } from './types';
 import { h } from './dom';
-import { fmtKmh, fmtLimit, fmtMJ, fmtS } from './format';
+import { fmtKmh, fmtKmhAtLeast, fmtLimit, fmtMJ, fmtS } from './format';
 import { icon } from './icons';
 
 export interface AboutDialog {
@@ -29,7 +29,7 @@ const DISCLAIMER =
   'F1, FORMULA ONE, FORMULA 1, FIA FORMULA ONE WORLD CHAMPIONSHIP, GRAND PRIX and related marks are trade marks of ' +
   "Formula One Licensing B.V. No team's car is depicted; the model is generic, built from the published 2026 dimensions.";
 
-type Kind = 'estimate' | 'reg' | 'phys';
+type Kind = 'estimate' | 'reg' | 'phys' | 'result';
 
 function section(n: string, title: string, body: Node[]): HTMLElement {
   return h('section', 'about-sec', [
@@ -75,7 +75,7 @@ const pct = (x: number) => Math.round(x * 100);
 
 /** Station 1 — force from speed. */
 function downforceSections(): HTMLElement[] {
-  const ceiling = fmtKmh(ceilingSpeedKmh());
+  const ceiling = fmtKmhAtLeast(ceilingSpeedKmh());
   const split = ESTIMATES.surfaces.map((s) => pct(s.share)).join(' / ');
   return [
     section('01', "What you're seeing", [
@@ -88,7 +88,7 @@ function downforceSections(): HTMLElement[] {
         ['weight', 'graphite arrow'],
         ' is the car’s weight. All arrows share one scale, so their lengths compare honestly.',
       ]),
-      p(`Exploded lifts the bodywork away so you can see the floor, which makes about half of the downforce. Ceiling test turns the car upside down: above about ${ceiling} km/h the downforce is larger than the weight, so in principle it would stay up.`),
+      p(`Exploded lifts the bodywork away so you can see the floor, which makes about half of the downforce. Ceiling test turns the car upside down: from ${ceiling} km/h up the downforce is larger than the weight, so in principle it would stay up.`),
     ]),
     section('02', 'The model', [
       h('div', 'formulas', [
@@ -121,18 +121,16 @@ function downforceSections(): HTMLElement[] {
   ];
 }
 
-/** The regulated motor limit, read back from the model so the page shows what the code does. */
-function motorTaper() {
-  const max = REGS.mguKMaxKw.value;
-  let start = 0;
-  while (mguKLimitKw(start + 1) >= max) start++;
-  let zero = start;
-  while (mguKLimitKw(zero) > 0) zero++;
-  const probe = start + 10;
-  const slope = mguKLimitKw(probe) - mguKLimitKw(probe + 1);
-  const intercept = mguKLimitKw(probe) + slope * probe;
-  return { max, start, zero, slope, intercept };
-}
+const lineText = (l: { intercept: number; slope: number }) => `${l.intercept} − ${l.slope}v kW`;
+
+const taperRows = (t: MotorTaper) => {
+  const src = () => tag('reg', `Reg ${REGS.mguKTaper.ref}`);
+  return [
+    row(`Motor limit, ${t.start}–${t.knee}\u00a0km/h`, lineText(t.first), src()),
+    row(`Motor limit, ${t.knee}–${t.zero}\u00a0km/h`, lineText(t.second), src()),
+    row(`Motor limit above ${t.zero}\u00a0km/h`, '0 kW', src()),
+  ];
+};
 
 /** Station 2 — active aero and top speed. */
 function activeAeroSections(): HTMLElement[] {
@@ -160,7 +158,8 @@ function activeAeroSections(): HTMLElement[] {
       h('div', 'formulas formulas--stacked', [
         formula('P_avail', 'η · (P_ICE + P_K(v))', 'power reaching the tyres'),
         formula('P_need', '(½ρ·CdA·v² + C_rr·(m·g + ½ρ·ClA·v²)) · v', 'drag, plus rolling resistance on weight and downforce'),
-        formula('P_K(v)', `${taper.intercept} − ${taper.slope}v kW`, `electric motor limit above ${taper.start} km/h, v in km/h (FIA ${REGS.mguKTaper.ref}); zero at ${taper.zero} km/h`),
+        formula('P_K(v)', lineText(taper.first), `electric motor limit from ${taper.start} to ${taper.knee} km/h, v in km/h: ${taper.max} kW below ${taper.start} (FIA ${REGS.mguKTaper.ref})`),
+        formula('P_K(v)', lineText(taper.second), `from ${taper.knee} to ${taper.zero} km/h; zero above ${taper.zero} km/h`),
         formula('v_top', 'where P_avail = P_need', `≈ ${fmtKmh(top.corner)} km/h in Corner Mode, ${fmtKmh(top.straight)} km/h in Straight Mode`),
       ]),
       p('Straight Mode lowers CdA and ClA together, and the flaps move over a fraction of a second, so the numbers blend between the two modes as the flaps travel.'),
@@ -174,7 +173,7 @@ function activeAeroSections(): HTMLElement[] {
         row('Straight Mode downforce, vs Corner Mode (Raceteq / Bramble CFD)', `−${cutDown} %`, tag('estimate', 'Estimate')),
         row('Straight Mode drag, vs Corner Mode (Raceteq / Bramble CFD)', `−${cutDrag} %`, tag('estimate', 'Estimate')),
         row('Electric motor (MGU-K) maximum', `${REGS.mguKMaxKw.value} kW`, tag('reg', `Reg ${REGS.mguKMaxKw.ref}`)),
-        row(`Motor limit above ${taper.start}\u00a0km/h`, `${taper.intercept} − ${taper.slope}v kW`, tag('reg', `Reg ${REGS.mguKTaper.ref}`)),
+        ...taperRows(taper),
         row('Corner ↔ Straight transition', `≤ ${ms.value} ms`, tag('reg', `Reg ${ms.ref}`)),
       ]),
     ]),
@@ -235,7 +234,7 @@ function energySections(): HTMLElement[] {
       list([
         `Braking: the motor-generator harvests up to ${motor.value} kW; the brakes turn the rest into heat.`,
         `Deploying: on full throttle the motor adds power up to its regulated limit, which fades above ${taper.start} km/h (${REGS.mguKTaper.ref}) — but only where the engine alone can't already spin the rear tyres, because power into wheelspin is wasted.`,
-        `Super clipping: near the end of the long straights the motor harvests at full throttle, topping up what braking alone recovers — about ${fmtS(clipS)} s on this lap at up to ${motor.value} kW, stopping with room left in the battery for the next braking zone.`,
+        `Super clipping: near the end of the long straights the motor harvests at full throttle, topping up what braking alone recovers — about ${fmtS(clipS)} s on this lap at up to ${motor.value} kW, allowed only while at least ${fmtMJ(BRAKE_RESERVE_J / 1e6)} MJ of room remains in the battery, so the next braking zone can still charge it.`,
         `The battery's charge never swings more than ${fmtLimit(store.value)} MJ, and no more than ${fmtLimit(cap.value)} MJ is recovered in a lap.`,
         'Laps are repeated until the charge at the line settles, so the lap shown is one the car could drive again and again.',
       ]),
@@ -248,10 +247,12 @@ function energySections(): HTMLElement[] {
         row('Tyre grip, braking and traction, μ_long', String(ESTIMATES.gripLongitudinal), tag('estimate', 'Estimate')),
         row('Share of weight and downforce on the driven rear axle', String(ESTIMATES.rearAxleShare), tag('estimate', 'Estimate')),
         row('Combustion engine power, P_ICE', `${ESTIMATES.iceKw} kW`, tag('estimate', 'Estimate')),
-        row('Super clipping per lap', `≈ ${fmtS(clipS)} s`, tag('estimate', 'Estimate')),
-        row('Room kept for the next braking zone (peak charge this lap)', `${fmtMJ(peakSoc)} of ${fmtLimit(store.value)} MJ`, tag('estimate', 'Estimate')),
+        row('Super clipping aimed for per lap (reports: 2–4 s)', `${CLIP_SECONDS_PER_LAP} s`, tag('estimate', 'Estimate')),
+        row('Super clipping this lap', `≈ ${fmtS(clipS)} s`, tag('result', 'Model result')),
+        row('Least battery room allowed while clipping', `${fmtMJ(BRAKE_RESERVE_J / 1e6)} MJ`, tag('estimate', 'Estimate')),
+        row('Peak battery charge this lap', `${fmtMJ(peakSoc)} of ${fmtLimit(store.value)} MJ`, tag('result', 'Model result')),
         row('Electric motor (MGU-K) maximum, deploy or harvest', `${motor.value} kW`, tag('reg', `Reg ${motor.ref}`)),
-        row(`Motor limit above ${taper.start}\u00a0km/h`, `${taper.intercept} − ${taper.slope}v kW`, tag('reg', `Reg ${REGS.mguKTaper.ref}`)),
+        ...taperRows(taper),
         row('Battery window (highest minus lowest charge)', `${fmtLimit(store.value)} MJ`, tag('reg', `Reg ${store.ref}`)),
         row('Energy recovered per lap, at most', `${fmtLimit(cap.value)} MJ`, tag('reg', `Reg ${cap.ref}`)),
       ]),

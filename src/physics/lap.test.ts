@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { REGS } from './constants';
-import { sampleAt, simulateLap } from './lap';
+import { DEFAULT_AERO_INPUTS, modeCoefficients } from './aero';
+import { ESTIMATES, PHYS, REGS } from './constants';
+import { ACTIVATION_MIN_M, BRAKE_RESERVE_J, DS, sampleAt, simulateLap } from './lap';
 import { buildTrack, SEGMENTS } from './track';
 
 describe('circuit', () => {
@@ -67,6 +68,63 @@ describe('lap simulation', () => {
     const open = lap.samples.filter((x) => x.straightT === 1);
     expect(open.length).toBeGreaterThan(100);
     expect(open.every((x) => x.phase !== 'brake')).toBe(true);
+  });
+
+  it('keeps the flaps closed in every corner, opening them only inside the straight zones', () => {
+    const { points, straights } = lap.track;
+    const zoned = new Set(straights.filter((st) => st.length >= ACTIVATION_MIN_M).map((st) => st.segment));
+    lap.samples.forEach((x, i) => {
+      if (points[i].curvature !== 0) expect(x.straightT).toBe(0);
+      if (x.straightT === 1) expect(zoned.has(points[i].segment)).toBe(true);
+    });
+    expect(lap.samples.some((x) => x.straightT === 1)).toBe(true);
+  });
+
+  it.each([
+    ['with super clipping', lap],
+    ['without super clipping', noClip],
+  ])('never deploys more than the rear tyres can put down (%s)', (_, run) => {
+    const { massKg, rho } = DEFAULT_AERO_INPUTS;
+    const deploying = run.samples.filter((x) => x.phase === 'deploy');
+    expect(deploying.length).toBeGreaterThan(100);
+    for (const x of deploying) {
+      const v = x.kmh / 3.6;
+      const downforceN = 0.5 * rho * v * v * modeCoefficients(x.straightT).clA;
+      const tractionN = ESTIMATES.gripLongitudinal * ESTIMATES.rearAxleShare * (massKg * PHYS.g + downforceN);
+      const wheelForceN = (ESTIMATES.drivelineEfficiency * (x.engineKw + x.mguKKw) * 1000) / v;
+      expect(wheelForceN).toBeLessThanOrEqual(tractionN * (1 + 1e-9));
+    }
+  });
+
+  it.each([
+    ['with super clipping', lap],
+    ['without super clipping', noClip],
+  ])('powers a lift with exactly what holds the speed profile: engine first, motor for the rest (%s)', (_, run) => {
+    const { massKg, rho } = DEFAULT_AERO_INPUTS;
+    const n = run.samples.length;
+    let lifts = 0;
+    run.samples.forEach((x, i) => {
+      if (x.phase !== 'lift') return;
+      lifts++;
+      const v = x.kmh / 3.6;
+      const vNext = run.samples[(i + 1) % n].kmh / 3.6;
+      const { clA, cdA } = modeCoefficients(x.straightT);
+      const q = 0.5 * rho * v * v;
+      const force = (massKg * (vNext * vNext - v * v)) / (2 * DS) + q * cdA + ESTIMATES.rollingResistance * (massKg * PHYS.g + q * clA);
+      const holdKw = Math.max(0, (force * ((v + vNext) / 2)) / ESTIMATES.drivelineEfficiency / 1000);
+      expect(x.engineKw).toBeCloseTo(Math.min(ESTIMATES.iceKw, holdKw), 3);
+      expect(x.engineKw + x.mguKKw).toBeCloseTo(holdKw, 3);
+    });
+    expect(lifts).toBeGreaterThan(0);
+  });
+
+  it('lets the motor cover a lift the engine alone cannot hold', () => {
+    expect(lap.samples.some((x) => x.phase === 'lift' && x.mguKKw > 0 && x.engineKw === ESTIMATES.iceKw)).toBe(true);
+  });
+
+  it('keeps the brake-harvest reserve inside the battery window', () => {
+    expect(BRAKE_RESERVE_J).toBeGreaterThan(0);
+    expect(BRAKE_RESERVE_J).toBeLessThan(REGS.energyStoreWindowMJ.value * 1e6);
   });
 
   it('interpolates samples by time and wraps around the lap', () => {

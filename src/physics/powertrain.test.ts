@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { aeroState } from './aero';
-import { availablePowerW, mguKLimitKw, requiredPowerW, topSpeedKmh } from './powertrain';
+import { AT_TOP_FRACTION, availablePowerW, mguKLimitKw, motorTaper, powerStatus, requiredPowerW, topSpeedKmh } from './powertrain';
 
 describe('ERS-K power limit (FIA C5.2.8)', () => {
   it.each([
@@ -28,6 +28,19 @@ describe('ERS-K power limit (FIA C5.2.8)', () => {
   });
 });
 
+describe('motorTaper', () => {
+  it('reads both C5.2.8 segments back from the limit', () => {
+    expect(motorTaper()).toEqual({
+      max: 350,
+      start: 290,
+      knee: 340,
+      zero: 345,
+      first: { intercept: 1800, slope: 5 },
+      second: { intercept: 6900, slope: 20 },
+    });
+  });
+});
+
 describe('power balance', () => {
   it('delivers 95% of engine + motor to the tyres', () => {
     expect(availablePowerW(200)).toBeCloseTo(0.95 * 750_000, 3);
@@ -45,6 +58,17 @@ describe('power balance', () => {
   });
 });
 
+describe('powerStatus', () => {
+  const have = 500_000;
+  it('is accelerating with clear headroom, short when clearly over, top in the band between', () => {
+    expect(powerStatus({ requiredPowerW: have * (1 - AT_TOP_FRACTION) - 1, availablePowerW: have })).toBe('accelerating');
+    expect(powerStatus({ requiredPowerW: have * (1 - AT_TOP_FRACTION), availablePowerW: have })).toBe('top');
+    expect(powerStatus({ requiredPowerW: have, availablePowerW: have })).toBe('top');
+    expect(powerStatus({ requiredPowerW: have * (1 + AT_TOP_FRACTION), availablePowerW: have })).toBe('top');
+    expect(powerStatus({ requiredPowerW: have * (1 + AT_TOP_FRACTION) + 1, availablePowerW: have })).toBe('short');
+  });
+});
+
 describe('top speed', () => {
   it('is higher in Straight Mode than in Corner Mode', () => {
     const corner = topSpeedKmh(0);
@@ -54,9 +78,11 @@ describe('top speed', () => {
     expect(corner).toBeLessThan(335);
   });
 
-  it('lands near the Monza 2026 qualifying anchor (341 km/h) in Straight Mode', () => {
+  it('lands within a few km/h of the Monza 2026 qualifying anchor (341 km/h) in Straight Mode', () => {
     const straight = topSpeedKmh(1);
-    expect(straight).toBeGreaterThan(330);
+    expect(straight).toBeGreaterThan(338.5 - 1.5);
+    expect(straight).toBeLessThan(338.5 + 1.5); // what the model's estimates actually give
+    expect(Math.abs(straight - 341)).toBeLessThan(5);
     expect(straight).toBeLessThan(345); // the motor limit reaches zero at 345
   });
 

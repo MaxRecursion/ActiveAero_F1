@@ -89,8 +89,9 @@ export interface AeroSurface {
  * 2026 cars carry about 30% less downforce and 55% less drag than 2022–25 cars (F1/FIA).
  *
  * clA 3.2 m² sits mid-range of published 2026 estimates (2.5–3.5 m²).
- * cdA 1.1 m² is consistent with Straight Mode cdA ≈ 0.9 m² (≈ -18%), which reproduces the
- * 341 km/h Monza 2026 qualifying top speed on ~495 kW of total power.
+ * cdA 1.1 m² gives Straight Mode cdA ≈ 0.9 m² (≈ -18%). With the estimated power the model tops out
+ * at ≈338.5 km/h in Straight Mode, a calibration target near the 341 km/h reported for Monza 2026
+ * qualifying, not a reproduction of it.
  * Surface split gives ≈46% front aero balance, typical of a high-downforce set-up.
  */
 export const ESTIMATES = {

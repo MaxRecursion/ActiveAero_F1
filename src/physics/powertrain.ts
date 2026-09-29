@@ -23,6 +23,49 @@ export function mguKLimitKw(speedKmh: number, overtake = false): number {
   return 0;
 }
 
+export interface MotorTaper {
+  max: number;
+  /** Speed where the limit starts to fall, km/h. */
+  start: number;
+  /** Speed where the second, steeper segment begins, km/h. */
+  knee: number;
+  /** Speed above which no motor power is allowed, km/h. */
+  zero: number;
+  /** The two falling segments as kW = intercept − slope·v (v in km/h). */
+  first: { intercept: number; slope: number };
+  second: { intercept: number; slope: number };
+}
+
+const TAPER_PROBE_MAX_KMH = 500;
+
+/** The regulated motor limit's shape, read back from mguKLimitKw so the About page shows what the code does. */
+export function motorTaper(): MotorTaper {
+  const max = REGS.mguKMaxKw.value;
+  const line = (v: number) => {
+    const slope = mguKLimitKw(v) - mguKLimitKw(v + 1);
+    return { slope, intercept: mguKLimitKw(v) + slope * v };
+  };
+  let start = 0;
+  while (start < TAPER_PROBE_MAX_KMH && mguKLimitKw(start + 1) >= max) start++;
+  const first = line(start + 10);
+  let knee = start + 10;
+  while (knee < TAPER_PROBE_MAX_KMH && Math.abs(line(knee).slope - first.slope) < 1e-9) knee++;
+  let zero = knee;
+  while (zero < TAPER_PROBE_MAX_KMH && mguKLimitKw(zero) > 0) zero++;
+  return { max, start, knee, zero, first, second: line(knee) };
+}
+
+/** Needed within this fraction of available power reads as "at top speed". */
+export const AT_TOP_FRACTION = 0.015;
+
+export type PowerStatus = 'accelerating' | 'top' | 'short';
+
+/** The one verdict on the power balance; the captions and the status line both read it. */
+export function powerStatus({ requiredPowerW, availablePowerW }: { requiredPowerW: number; availablePowerW: number }): PowerStatus {
+  if (Math.abs(requiredPowerW - availablePowerW) <= AT_TOP_FRACTION * availablePowerW) return 'top';
+  return requiredPowerW < availablePowerW ? 'accelerating' : 'short';
+}
+
 export interface PowerOptions {
   /** Electric motor deploying at its regulated limit (battery has charge). Default true. */
   deploy?: boolean;

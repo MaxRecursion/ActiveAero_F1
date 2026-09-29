@@ -9,6 +9,7 @@ import { createForceArrows } from '../src/scene/effects/forces';
 import { createWindTunnel } from '../src/scene/effects/tunnel';
 import { aeroState } from '../src/physics/aero';
 import { visualSpeed } from '../src/scene/motion';
+import { fmtKN } from '../src/ui/format';
 
 const stage = createHarness();
 const speed = num('speed', 300);
@@ -27,7 +28,7 @@ if (params.get('ceiling') === '1') {
 stage.scene.add(rig);
 car.setExplode(THREE.MathUtils.clamp(num('explode', 0), 0, 1));
 
-const arrows = createForceArrows({ car, metresPerNewton: 1 / 7500 });
+const arrows = createForceArrows({ car, metresPerNewton: 1 / 7500, formatForce: fmtKN });
 stage.scene.add(arrows.root);
 const state = aeroState(speed);
 const surface = (id: string) => state.surfaces.find((s) => s.id === id)?.downforceN ?? 0;

@@ -63,17 +63,17 @@ export interface LapResult {
   options: Required<LapOptions>;
 }
 
-const DS = 2;
+export const DS = 2;
 /** Straights at least this long get a Straight Mode activation zone. */
-const ACTIVATION_MIN_M = 300;
+export const ACTIVATION_MIN_M = 300;
 /** Flaps open this far after a straight begins (corner exit). */
 const ACTIVATION_DELAY_M = 60;
 /** Only straights at least this long are used for super clipping. */
 const CLIP_MIN_STRAIGHT_M = 600;
 /** Teams aim for roughly 2–4 s of super clipping a lap (2026 reports); use the upper end. */
-const CLIP_SECONDS_PER_LAP = 4;
-/** Clipping stops with this much room left in the battery, so the next braking zone can still harvest. */
-const BRAKE_RESERVE_J = 0.9e6;
+export const CLIP_SECONDS_PER_LAP = 4;
+/** Clipping is only allowed while at least this much room is left in the battery, so the next braking zone can still harvest. */
+export const BRAKE_RESERVE_J = 0.9e6;
 const MIN_V = 5;
 const LAPS = 4;
 
@@ -99,8 +99,8 @@ export function simulateLap(opts: LapOptions = {}): LapResult {
   for (const st of track.straights) {
     if (st.length < ACTIVATION_MIN_M) continue;
     for (let i = 0; i < n; i++) {
-      const d = pts[i].s - st.start;
-      if (d >= ACTIVATION_DELAY_M && d < st.length) onZoneStraight[i] = 1;
+      // Segment identity, not float distances: a boundary sample of the next corner must not open the flaps.
+      if (pts[i].segment === st.segment && pts[i].s - st.start >= ACTIVATION_DELAY_M) onZoneStraight[i] = 1;
     }
   }
 
@@ -165,7 +165,8 @@ export function simulateLap(opts: LapOptions = {}): LapResult {
         if (clipping) {
           motorW = -Math.min(motorMaxW, capJ - harvested, windowJ - soc); // J capped per step below
         } else if (soc > 0 && (eta * iceW) / vSafe < traction) {
-          motorW = mguKLimitKw(kmh(v)) * 1000;
+          // Only what the rear tyres can put down: deploying beyond traction would just spin them.
+          motorW = Math.min(mguKLimitKw(kmh(v)) * 1000, Math.max(0, (traction * vSafe) / eta - iceW));
         }
         const wheelW = eta * (iceW + motorW);
         const drive = Math.min(wheelW / vSafe, traction);
@@ -193,7 +194,12 @@ export function simulateLap(opts: LapOptions = {}): LapResult {
             if (straightIdx >= 0 && !brakeStart.has(straightIdx)) brakeStart.set(straightIdx, p.s);
           } else {
             phase = 'lift';
-            engineW = iceW * 0.4;
+            // Just the power that holds the speed profile (inertia + drag + rolling): the engine first,
+            // the motor only for what the engine can't cover.
+            const holdForce = (m * (vNext * vNext - v * v)) / (2 * DS) + drag + rolling;
+            const holdW = Math.max(0, (holdForce * Math.max(MIN_V, (v + vNext) / 2)) / eta);
+            engineW = Math.min(iceW, holdW);
+            deployW = Math.min(Math.max(0, holdW - iceW), mguKLimitKw(kmh(v)) * 1000);
           }
         }
 

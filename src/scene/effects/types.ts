@@ -26,6 +26,8 @@ export interface ForceArrowsOptions {
   car: CarModel;
   /** Metres of arrow per newton. One scale for every arrow so lengths compare honestly. */
   metresPerNewton: number;
+  /** Text for an arrow's tag from its force in newtons (no unit). */
+  formatForce: (newtons: number) => string;
 }
 
 export interface ForceArrows {

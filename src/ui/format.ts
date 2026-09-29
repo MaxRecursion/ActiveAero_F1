@@ -26,6 +26,9 @@ export const fmtKg = (kg: number): string => grouped(Math.max(0, kg));
 /** km/h → "300" (integer). */
 export const fmtKmh = (kmh: number): string => grouped(kmh);
 
+/** A "needs at least" speed: rounded up, so the printed speed is one where the condition really holds. */
+export const fmtKmhAtLeast = (kmh: number): string => grouped(Math.ceil(kmh));
+
 /** Downforce / weight → "1.8". */
 export const fmtRatio = (r: number): string => oneDecimal.format(Math.max(0, r));
 

@@ -5,7 +5,7 @@
  */
 import type { CaptionRun, Station1View } from './types';
 import { h, textSlot } from './dom';
-import { fmtKmh, fmtRatio } from './format';
+import { fmtKmhAtLeast, fmtRatio } from './format';
 
 export interface Caption {
   el: HTMLElement;
@@ -62,7 +62,7 @@ export function createCaption(): Caption {
         setDetail(`downforce ${fmtRatio(view.downforceToWeight)} × weight`);
       } else if (ceiling === 'falls') {
         setState('Falls');
-        setDetail(`needs ${fmtKmh(view.ceilingSpeedKmh)} km/h`);
+        setDetail(`needs ${fmtKmhAtLeast(view.ceilingSpeedKmh)} km/h`);
       }
     },
   };

@@ -6,6 +6,7 @@
  * carries the spoken summary.
  */
 import { REGS } from '../physics/constants';
+import { powerStatus, type PowerStatus } from '../physics/powertrain';
 import type { Station2View } from './types';
 import { h, styleSlot, textSlot } from './dom';
 import { fmtKmh, fmtKN, fmtKW } from './format';
@@ -17,15 +18,11 @@ export interface AeroReadouts {
 
 /** Power meter full scale, kW (matches the chart's y axis). */
 export const POWER_SCALE_KW = 800;
-/** Needed within this fraction of available reads as "at top speed". */
-const AT_TOP_FRACTION = 0.015;
 /** Deltas smaller than this (fraction) are not worth a chip. */
 const MIN_DELTA = 0.005;
 
 type Tone = 'down' | 'drag' | 'weight';
-type Status = 'accelerating' | 'top' | 'short';
-
-const STATUS: Record<Status, { long: string; short: string }> = {
+const STATUS: Record<PowerStatus, { long: string; short: string }> = {
   accelerating: { long: 'Enough power — still accelerating', short: 'Still accelerating' },
   top: { long: 'At top speed', short: 'At top speed' },
   short: { long: 'Can’t hold this speed — not enough power', short: 'Not enough power' },
@@ -139,7 +136,7 @@ export function createAeroReadouts(): AeroReadouts {
   const setLong = textSlot(statusLong);
   const setShort = textSlot(statusShort);
   const setMotor = textSlot(motorKw);
-  let lastStatus: Status | null = null;
+  let lastStatus: PowerStatus | null = null;
   let lastMode: Station2View['mode'] | null = null;
 
   return {
@@ -165,8 +162,7 @@ export function createAeroReadouts(): AeroReadouts {
       has.render(v.availablePowerW);
       setTick(Math.min(1, v.availablePowerW / 1000 / POWER_SCALE_KW).toFixed(4));
 
-      const atTop = Math.abs(v.requiredPowerW - v.availablePowerW) <= AT_TOP_FRACTION * v.availablePowerW;
-      const st: Status = atTop ? 'top' : v.reachable ? 'accelerating' : 'short';
+      const st = powerStatus(v);
       if (st !== lastStatus) {
         lastStatus = st;
         status.dataset.status = st;

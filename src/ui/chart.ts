@@ -7,7 +7,7 @@
  */
 import { aeroState, ceilingSpeedKmh } from '../physics/aero';
 import { attrSlot, h, s } from './dom';
-import { fmtKmh, fmtKN } from './format';
+import { fmtKmhAtLeast, fmtKN } from './format';
 
 export interface ForceChart {
   el: HTMLElement;
@@ -42,7 +42,7 @@ export function createForceChart(opts: { minKmh: number; maxKmh: number }): Forc
     {
       class: 'chart-svg',
       role: 'img',
-      'aria-label': `Chart of force against speed. Downforce and drag both grow with the square of speed. Downforce passes the car's weight of ${fmtKN(weightN)} kilonewtons at about ${fmtKmh(crossKmh)} km/h.`,
+      'aria-label': `Chart of force against speed. Downforce and drag both grow with the square of speed. Downforce passes the car's weight of ${fmtKN(weightN)} kilonewtons from ${fmtKmhAtLeast(crossKmh)} km/h.`,
     },
     [staticLayer, s('g', { class: 'chart-live', 'aria-hidden': 'true' }, [cursorLine, dotDown, dotDrag]), labelLayer],
   );
@@ -109,7 +109,7 @@ export function createForceChart(opts: { minKmh: number; maxKmh: number }): Forc
     const xc = x(crossKmh);
     parts.push(s('line', { class: 'chart-cross-drop', x1: f(xc), x2: f(xc), y1: f(yW), y2: yBase }));
     labels.push(s('circle', { class: 'chart-cross', cx: f(xc), cy: f(yW), r: 4 }));
-    labels.push(text(`${fmtKmh(crossKmh)} km/h`, { class: 'chart-cross-label', x: f(xc + 7), y: f(yW + 14) }));
+    labels.push(text(`${fmtKmhAtLeast(crossKmh)} km/h`, { class: 'chart-cross-label', x: f(xc + 7), y: f(yW + 14) }));
 
     staticLayer.replaceChildren(...parts);
     labelLayer.replaceChildren(...labels);

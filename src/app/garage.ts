@@ -21,6 +21,7 @@ import { createWindTunnel } from '../scene/effects/tunnel';
 import type { Airflow, EnergyFlow, EnergyFlows, ForceArrows, ForceId, WindTunnel } from '../scene/effects/types';
 import { visualSpeed } from '../scene/motion';
 import { prefersReducedMotion, type Stage } from '../scene/stage';
+import { fmtKN } from '../ui/format';
 import type { AeroMode } from '../ui/types';
 
 /** 1 m of arrow = 7.5 kN, so the weight arrow is about a metre long. */
@@ -47,6 +48,8 @@ export interface Garage {
   airflow: Airflow;
   forces: ForceArrows;
   energy: EnergyFlow;
+  /** Commanded state: the car is (being) exploded. The airflow is hidden while it is. */
+  readonly exploded: boolean;
   /** Current eased-in progress of the transitions (0–1). */
   readonly explodeT: number;
   readonly flipT: number;
@@ -75,7 +78,7 @@ export function createGarage(stage: Stage): Garage {
   const car = buildCar();
   const tunnel = createWindTunnel();
   const airflow = createAirflow({ car });
-  const forces = createForceArrows({ car, metresPerNewton: METRES_PER_NEWTON });
+  const forces = createForceArrows({ car, metresPerNewton: METRES_PER_NEWTON, formatForce: fmtKN });
   // Routes are traced from the assembled car, so this must come before any explode.
   const energy = createEnergyFlow({ car });
 
@@ -186,6 +189,9 @@ export function createGarage(stage: Stage): Garage {
     airflow,
     forces,
     energy,
+    get exploded() {
+      return target.exploded;
+    },
     get explodeT() {
       return s.explodeT;
     },

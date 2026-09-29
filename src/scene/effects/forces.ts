@@ -83,7 +83,7 @@ const UP = new THREE.Vector3(0, 1, 0);
 const WORLD_DOWN = new THREE.Vector3(0, -1, 0);
 
 export function createForceArrows(opts: ForceArrowsOptions): ForceArrows {
-  const { car, metresPerNewton } = opts;
+  const { car, metresPerNewton, formatForce } = opts;
   const root = new THREE.Group();
   root.name = 'forceArrows';
 
@@ -320,7 +320,8 @@ export function createForceArrows(opts: ForceArrowsOptions): ForceArrows {
       a.group.quaternion.setFromUnitVectors(UP, a.dir);
       layout(a, length);
 
-      const text = `${(a.current / 1000).toFixed(1)} kN`;
+      // The tag names the true force, not the eased arrow length, so it matches the readouts.
+      const text = `${formatForce(a.target)} kN`;
       if (text !== a.text) {
         a.text = text;
         a.value.textContent = text;

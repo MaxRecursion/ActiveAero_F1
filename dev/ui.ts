@@ -160,7 +160,6 @@ function view2(): Station2View {
     iceKw: ESTIMATES.iceKw,
     topSpeedCornerKmh: tops.corner,
     topSpeedStraightKmh: tops.straight,
-    reachable: has >= need,
     caption: CAPTION_2,
   };
 }

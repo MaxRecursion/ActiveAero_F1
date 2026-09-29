@@ -4,6 +4,7 @@
  * Captions follow the lap phase (with a couple of refinements: an empty battery, a slow corner
  * exit), so they change a few times per lap, never every frame.
  */
+import { REGS } from '../../physics/constants';
 import type { LapPhase } from '../../physics/lap';
 import type { CaptionRun } from '../../ui/types';
 
@@ -17,14 +18,16 @@ export interface CaptionContext {
 /** Below this charge the motor is about to stop helping. */
 const EMPTY_MJ = 0.05;
 
+const MOTOR_KW = `${REGS.mguKMaxKw.value} kW`;
+
 export function captionFor({ phase, kmh, socMJ, clipping }: CaptionContext): CaptionRun[] {
   switch (phase) {
     case 'brake':
       return [
-        { text: 'Braking: the motor-generator catches up to ' },
-        { text: '350 kW', tone: 'energy' },
-        { text: ' of the car’s momentum and ' },
-        { text: 'stores it', tone: 'energy' },
+        { text: 'Braking: the motor-generator turns the car’s kinetic energy into up to ' },
+        { text: MOTOR_KW, tone: 'energy' },
+        { text: ' of ' },
+        { text: 'charging power', tone: 'energy' },
         { text: '. The brakes turn the rest into heat.' },
       ];
     case 'clip':
@@ -38,8 +41,8 @@ export function captionFor({ phase, kmh, socMJ, clipping }: CaptionContext): Cap
     case 'deploy':
       return [
         { text: 'Full throttle: the battery adds up to ' },
-        { text: '350 kW', tone: 'energy' },
-        { text: ' through the motor — nearly as much as the ' },
+        { text: MOTOR_KW, tone: 'energy' },
+        { text: ' through the motor, fading as speed climbs — at low speed nearly as much as the ' },
         { text: 'engine', tone: 'engine' },
         { text: ' makes on its own.' },
       ];
@@ -54,7 +57,7 @@ export function captionFor({ phase, kmh, socMJ, clipping }: CaptionContext): Cap
       if (socMJ < EMPTY_MJ && kmh > 150) {
         return [
           { text: 'Battery empty', tone: 'strong' },
-          { text: ': the car has just lost up to 350 kW. This is how 2026 cars run out of speed mid-straight' },
+          { text: `: the car has just lost up to ${MOTOR_KW}. This is how 2026 cars run out of speed mid-straight` },
           ...(clipping ? [] : [{ text: ' — turn super clipping back on', tone: 'muted' as const }]),
           { text: '.' },
         ];

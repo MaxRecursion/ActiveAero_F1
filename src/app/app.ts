@@ -27,6 +27,7 @@ const ROUTES: Record<StationId, string> = {
 };
 const SWEEP_SECONDS = 4.5;
 const INTRO_SECONDS = 3.2;
+const AIRFLOW_HIDDEN_REASON = 'Airflow is hidden while the car is exploded';
 
 function stationFromHash(): StationId | null {
   const hit = (Object.entries(ROUTES) as [StationId, string][]).find(([, route]) => route === location.hash);
@@ -52,7 +53,10 @@ export function startApp(stage: Stage, uiRoot: HTMLElement) {
         stopSweep();
         speed.target = kmh;
       },
-      onToggle: (id, on) => active?.onToggle?.(id, on),
+      onToggle(id, on) {
+        active?.onToggle?.(id, on);
+        syncAirflowAvailability();
+      },
       onAeroMode: (mode) => active?.onAeroMode?.(mode),
       onPlayToggle() {
         if (active?.onPlayToggle) active.onPlayToggle();
@@ -74,6 +78,11 @@ export function startApp(stage: Stage, uiRoot: HTMLElement) {
     StationId,
     Station
   >;
+
+  /** The garage fades the airflow out while the car is exploded, so its toggle must say so. */
+  function syncAirflowAvailability() {
+    ui.setToggleAvailable('airflow', !garage.exploded, AIRFLOW_HIDDEN_REASON);
+  }
 
   // ── speed sweep ────────────────────────────────────────────────────────────────
   function startSweep(loop: boolean, to?: number) {
@@ -131,6 +140,7 @@ export function startApp(stage: Stage, uiRoot: HTMLElement) {
     active = next;
     ui.setStation(id);
     next.enter();
+    syncAirflowAvailability();
     void stage.goTo(next.shot());
     introduce(next);
   }
