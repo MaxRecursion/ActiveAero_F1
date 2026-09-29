@@ -34,9 +34,27 @@ async function getCar(): Promise<CarModel> {
   }
 }
 
-async function start(stage: Stage) {
-  const car = await getCar();
-  startApp(stage, uiRoot, car);
+/** Replace the loading line with a message screen readers announce and everyone can read. */
+function showFailure(message: string) {
+  boot.textContent = message;
+  boot.classList.remove('gone');
+  boot.classList.add('failed');
+  boot.removeAttribute('aria-hidden');
+  boot.setAttribute('role', 'alert');
+}
+
+async function start(mountEl: HTMLElement) {
+  let stage: Stage;
+  let car: CarModel;
+  try {
+    stage = createStage({ mount: mountEl });
+    car = await getCar();
+    startApp(stage, uiRoot, car);
+  } catch (err) {
+    console.error(err);
+    showFailure('Something went wrong starting the 3D view. Reload the page, or try another browser.');
+    return;
+  }
   let frames = 0;
   const off = stage.onFrame(() => {
     if (++frames < 3) return;
@@ -48,7 +66,7 @@ async function start(stage: Stage) {
 }
 
 if (!hasWebGL2()) {
-  boot.textContent = 'This explainer needs WebGL 2, which this browser or device has turned off.';
+  showFailure('This explainer needs WebGL 2, which this browser or device has turned off. Try another browser or enable hardware acceleration.');
 } else {
-  void start(createStage({ mount }));
+  void start(mount);
 }

@@ -108,3 +108,11 @@ button { font: inherit; color: inherit; }
   transition: opacity 0.4s;
 }
 #boot.gone { opacity: 0; }
+#boot.failed {
+  padding: 24px;
+  text-align: center;
+  text-transform: none;
+  letter-spacing: 0;
+  font: 500 16px/1.5 var(--font-ui);
+  color: var(--ink);
+}

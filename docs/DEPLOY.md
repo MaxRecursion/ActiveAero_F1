@@ -62,7 +62,7 @@ Keep `models/source/` (the 40 MB original) out of the repo — it is git-ignored
 - [ ] `npm run build && npx wrangler pages dev dist` locally — confirms `_headers` + CSP don't block anything
 - [ ] Preview deploy checked on desktop Chrome/Safari/Firefox and a phone (WebGL 2 required)
 - [ ] Open Graph image (`og:image`) for link previews
-- [ ] Optional: Cloudflare **Web Analytics** (cookie-free) — one toggle in the Pages project
+- [ ] Optional: Cloudflare **Web Analytics** (cookie-free). The strict CSP blocks its beacon until `script-src` gains `https://static.cloudflareinsights.com` and `connect-src` gains `https://cloudflareinsights.com` in `public/_headers`.
 
 ## Alternatives (not needed now)
 

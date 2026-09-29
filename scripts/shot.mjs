@@ -3,7 +3,7 @@
  * Headless screenshot of any page in this project, with console errors printed.
  * Starts its own Vite dev server on a free port, so several can run at once.
  *
- *   node scripts/shot.mjs <page-path?query> <out.png> [--size 1440x900] [--wait 2500] [--mobile]
+ *   node scripts/shot.mjs <page-path?query> <out.png> [--size 1440x900] [--wait 2500] [--mobile] [--no-webgl]
  *
  * Examples:
  *   node scripts/shot.mjs "dev/car.html?view=hero" shots/car-hero.png
@@ -27,6 +27,7 @@ for (let i = 0; i < args.length; i++) {
   const a = args[i];
   if (VALUE_FLAGS.has(a)) opts[a.slice(2)] = args[++i];
   else if (a === '--mobile') opts.mobile = true;
+  else if (a === '--no-webgl') opts.noWebgl = true;
   else positional.push(a);
 }
 const [pagePath, outPath] = positional;
@@ -58,6 +59,7 @@ const browser = await puppeteer.launch({
 let failed = false;
 try {
   const page = await browser.newPage();
+  if (opts.noWebgl) await page.evaluateOnNewDocument(() => { HTMLCanvasElement.prototype.getContext = () => null; });
   await page.setViewport({ width, height, deviceScaleFactor: 1, isMobile: mobile, hasTouch: mobile });
   page.on('console', (msg) => {
     const type = msg.type();
