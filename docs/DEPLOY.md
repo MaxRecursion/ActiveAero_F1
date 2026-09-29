@@ -25,7 +25,7 @@ After that, every push to `main` deploys to production and every other branch / 
 | Build output directory | `dist` |
 | Root directory | `/` |
 | Node version | from `.node-version` (22) — or set `NODE_VERSION=22` |
-| Environment variables | none needed |
+| Environment variables | optional `SITE_URL` (e.g. `https://unseen-aero.pages.dev`): the absolute URL used for the link-preview tags (`og:image`, `og:url`, `twitter:image`). Without it Pages falls back to `CF_PAGES_URL`, which for production is a per-deployment URL, so set `SITE_URL` once you have a final domain |
 
 Pages installs dependencies from `package-lock.json` automatically before the build. `puppeteer-core` and the model tools are
 dev-only and download nothing heavy.

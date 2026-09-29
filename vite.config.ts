@@ -5,8 +5,24 @@ import { defineConfig } from 'vitest/config';
 const env = (globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env ?? {};
 const port = Number(env.PORT) || undefined;
 
+// Link previews need an absolute image URL. Set SITE_URL for the production domain; a Cloudflare Pages
+// build otherwise falls back to CF_PAGES_URL. With neither set (local builds) the tags are left out.
+const siteUrl = (env.SITE_URL || env.CF_PAGES_URL || '').replace(/\/+$/, '');
+const shareTags = {
+  name: 'unseen-share-tags',
+  transformIndexHtml() {
+    if (!siteUrl) return [];
+    return [
+      { tag: 'meta', attrs: { property: 'og:url', content: `${siteUrl}/` }, injectTo: 'head' as const },
+      { tag: 'meta', attrs: { property: 'og:image', content: `${siteUrl}/og.png` }, injectTo: 'head' as const },
+      { tag: 'meta', attrs: { name: 'twitter:image', content: `${siteUrl}/og.png` }, injectTo: 'head' as const },
+    ];
+  },
+};
+
 export default defineConfig({
   base: './',
+  plugins: [shareTags],
   server: { port, strictPort: port !== undefined },
   build: {
     target: 'es2022',
