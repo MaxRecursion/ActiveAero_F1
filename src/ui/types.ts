@@ -1,3 +1,5 @@
+import type { Theme } from '../theme';
+
 /**
  * CONTRACT — the DOM interface, shared by every station. Implemented by src/ui/createUI.ts (+ src/ui/*).
  *
@@ -254,6 +256,7 @@ export interface UIHandlers {
   onToggle(id: ToggleId, on: boolean): void;
   /** Whether the engine sound is muted. */
   onSoundToggle(muted: boolean): void;
+  onThemeChange(theme: Theme): void;
   /** Play / stop the automatic speed sweep. */
   onPlayToggle(): void;
   onResetView(): void;

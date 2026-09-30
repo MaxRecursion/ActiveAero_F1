@@ -17,6 +17,7 @@ import { createUI } from '../ui/createUI';
 import type { StationId, StationUIConfig } from '../ui/types';
 import { createEngineSound } from './engineSound';
 import { createGarage, easeInOut } from './garage';
+import { getTheme } from '../theme';
 
 /** Tab order. */
 const STATIONS: { config: StationUIConfig; create: StationFactory }[] = [
@@ -68,6 +69,7 @@ export function startApp(stage: Stage, uiRoot: HTMLElement, car: CarModel) {
         syncAirflowAvailability();
       },
       onSoundToggle: (muted) => engineSound.setMuted(muted),
+      onThemeChange: (theme) => stage.setTheme(theme),
       onAeroMode: (mode) => active?.onAeroMode?.(mode),
       onPlayToggle() {
         if (active?.onPlayToggle) active.onPlayToggle();
@@ -177,6 +179,7 @@ export function startApp(stage: Stage, uiRoot: HTMLElement, car: CarModel) {
   });
 
   switchTo(stationFromHash() ?? 'downforce');
+  stage.setTheme(getTheme());
   syncInsets();
 
   if (import.meta.env.DEV) {

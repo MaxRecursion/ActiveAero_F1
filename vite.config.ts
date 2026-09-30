@@ -4,6 +4,7 @@ import { defineConfig } from 'vitest/config';
 // never silently lands on a different port. Without PORT, Vite's default (5173, or next free).
 const env = (globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env ?? {};
 const port = Number(env.PORT) || undefined;
+const pagesBasePath = env.PAGES_BASE_PATH;
 
 // Link previews need an absolute image URL. Set SITE_URL for the production domain; a Cloudflare Pages
 // build otherwise falls back to CF_PAGES_URL. With neither set (local builds) the tags are left out.
@@ -21,7 +22,7 @@ const shareTags = {
 };
 
 export default defineConfig({
-  base: './',
+  base: pagesBasePath ?? './',
   plugins: [shareTags],
   server: { port, strictPort: port !== undefined },
   build: {

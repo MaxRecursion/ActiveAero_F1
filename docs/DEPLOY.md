@@ -42,8 +42,8 @@ ask fan projects not to use its marks in names or domains), e.g. `unseen-aero` �
   - security headers on every response: `nosniff`, a strict referrer policy, a locked-down `Permissions-Policy`,
     `COOP same-origin`, and a Content-Security-Policy that only allows the site's own files. `'wasm-unsafe-eval'` is there
     for the meshopt model decoder (WebAssembly); `style-src 'unsafe-inline'` covers the inline styles the 3D label layer sets; `font-src data:` covers the tiny font subsets Vite inlines.
-- Routing is hash-based (`#/downforce`, `#/active-aero`, `#/energy`), so no `_redirects` or SPA fallback is needed.
-- Vite `base: './'`, so the build also works from any sub-path.
+- Routing is hash-based (`#/downforce`, `#/active-aero`, `#/energy`), so no pathname rewrite is needed. The GitHub Pages workflow also publishes `404.html` as a fallback document.
+- Vite uses `base: './'` locally and for default builds; the GitHub Pages workflow sets the production base from `actions/configure-pages`.
 
 ## Limits that matter (free plan)
 
@@ -70,3 +70,13 @@ Keep `models/source/` (the 40 MB original) out of the repo — it is git-ignored
   `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` repo secrets. Worth it only if the build grows extra steps.
 - **Workers static assets**: Cloudflare's newer recommended home for new projects; same static `dist/`, configured with a
   `wrangler.jsonc`. Easy to move to later — nothing in the app depends on Pages specifically.
+
+## GitHub Pages
+
+The repository also has a GitHub Actions workflow that builds and deploys the site to GitHub Pages. Before the first deploy:
+
+1. Open the repository's **Settings → Pages**.
+2. Under **Build and deployment → Source**, select **GitHub Actions**.
+3. Push to `main` to deploy, or run **Deploy to GitHub Pages** from the Actions tab with **workflow_dispatch**.
+
+The workflow installs the Node version in `.node-version` with `npm ci`, runs `npm test` and `npm run build`, then publishes `dist/` with the official Pages artifact and deployment actions. It takes the Vite base path and absolute `SITE_URL` from `actions/configure-pages`, so project Pages, user Pages, and custom domains use the correct URLs without repository-specific settings or secrets. The build also copies `dist/index.html` to `dist/404.html` for Pages fallback behavior. Station navigation remains hash-based.

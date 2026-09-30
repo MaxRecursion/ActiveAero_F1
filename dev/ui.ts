@@ -362,6 +362,7 @@ const ui = createUI({
     },
     onTowGapInput() {},
     onSoundToggle() {},
+    onThemeChange() {},
     onPlayToggle() {
       if (station === 'braking') {
         if (brakeState !== 'braking') {

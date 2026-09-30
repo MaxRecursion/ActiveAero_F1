@@ -40,6 +40,7 @@ import { createSpeedControl, type MarkerDef, type ScaleMarker } from './speedCon
 import { createTabs } from './tabs';
 import { createTrackMap } from './trackMap';
 import { createTowReadouts } from './towReadouts';
+import { getTheme, setTheme } from '../theme';
 
 /**
  * Must match the layout breakpoints in ui.css.
@@ -123,9 +124,11 @@ export function createUI(opts: UIOptions): UI {
   const sound = toolButton('volumeMuted', 'Unmute engine sound');
   sound.btn.classList.add('sound-btn');
   sound.btn.setAttribute('aria-pressed', 'false');
+  let theme = getTheme();
+  const themeButton = toolButton(theme === 'light' ? 'moon' : 'sun', `Switch to ${theme === 'light' ? 'dark' : 'light'} theme`);
   const reset = toolButton('reset', 'Reset view', 'R', 'R');
   const info = toolButton('about', 'How it works', 'Shift+? H', '? · H');
-  const toolbar = h('div', { class: 'ui-toolbar', attrs: { role: 'toolbar', 'aria-label': 'View' } }, [sound.btn, play.btn, reset.btn, info.btn]);
+  const toolbar = h('div', { class: 'ui-toolbar', attrs: { role: 'toolbar', 'aria-label': 'View' } }, [themeButton.btn, sound.btn, play.btn, reset.btn, info.btn]);
 
   // ── dock ──────────────────────────────────────────────────────────────────────
   const speed = createSpeedControl({ ...opts, onInput: (kmh) => handlers.onSpeedInput(kmh) });
@@ -338,7 +341,17 @@ export function createUI(opts: UIOptions): UI {
     handlers.onSoundToggle(soundMuted);
   };
   const onReset = () => handlers.onResetView();
+  const onThemeToggle = () => {
+    theme = theme === 'light' ? 'dark' : 'light';
+    setTheme(theme);
+    const label = `Switch to ${theme === 'light' ? 'dark' : 'light'} theme`;
+    themeButton.btn.setAttribute('aria-label', label);
+    themeButton.tipLabel.textContent = label;
+    themeButton.btn.querySelector('svg')?.replaceWith(icon(theme === 'light' ? 'moon' : 'sun'));
+    handlers.onThemeChange(theme);
+  };
   const onInfo = () => about.open(active);
+  themeButton.btn.addEventListener('click', onThemeToggle);
   sound.btn.addEventListener('click', onSoundToggle);
   play.btn.addEventListener('click', onPlay);
   reset.btn.addEventListener('click', onReset);
@@ -517,6 +530,7 @@ export function createUI(opts: UIOptions): UI {
       for (const mq of [sheetMq, sideMq, compactMq]) mq.removeEventListener('change', notifyLayout);
       play.btn.removeEventListener('click', onPlay);
       sound.btn.removeEventListener('click', onSoundToggle);
+      themeButton.btn.removeEventListener('click', onThemeToggle);
       reset.btn.removeEventListener('click', onReset);
       info.btn.removeEventListener('click', onInfo);
       ro.disconnect();

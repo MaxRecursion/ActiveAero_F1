@@ -1,36 +1,104 @@
 # UNSEEN — the 2026 grand-prix car, opened up
 
-An interactive 3D explainer of the 2026 Formula 1™ car. Each **station** takes one control and makes one invisible
-thing visible — drawn on the car, with live numbers and a one-line *why*.
+UNSEEN is an interactive 3D explainer of a representative 2026 Formula 1™ car. Explore five **stations**, each built around a control and a physical idea: change the input, watch the car and its live readouts respond, then see a concise explanation of why.
 
-| # | Station | Control | What becomes visible |
-|---|---------|---------|----------------------|
-| 01 | **Downforce** | Speed | Downforce and drag arrows growing with speed², the floor doing most of the work, and the speed at which the car could drive on the ceiling |
-| 02 | **Active aero** | Speed · Corner / Straight Mode | 2026 wings opening (no DRS any more), drag vs downforce, and why top speed is where *power available* meets *power the air takes* |
-| 03 | **Energy** | A lap you can scrub | The half-electric power unit: braking recovery, deployment, super clipping and a 4 MJ usable battery window that often runs dry |
+## Explore the car
 
-Numbers come from small, documented physics models. Regulation facts cite the FIA 2026 Technical Regulations
-(Section C, Issue 20); anything not published (aero coefficients, grip, …) is labelled **estimate** in the app.
+| # | Station | Main control | What it reveals |
+|---|---------|--------------|-----------------|
+| 01 | **Downforce** | Speed | Downforce and drag grow with speed; compare the front wing, floor, and rear wing, expose the floor with the exploded-car view, or flip the rig for a ceiling test that compares downforce with weight. |
+| 02 | **Active aero** | Speed and Corner / Straight Mode | Switch the wings between Corner Mode and Straight Mode, compare drag and downforce, and see estimated power demand and top speed. The model reflects the 2026 mode switch rather than DRS. |
+| 03 | **Energy** | Scrubbable lap timeline | Follow a simulated lap to see battery charge, motor deployment, braking recovery, and super clipping. X-ray the car to reveal the power unit and animate energy paths; turn clipping or airflow on and off. |
+| 04 | **Braking** | Entry speed and Brake | Play or scrub a braking zone and inspect deceleration, forward load transfer, exaggerated suspension dive, glowing brake discs, regenerative harvest, and heat. Toggle see-through wheels to reveal the brakes. |
+| 05 | **Tow** | Following-car gap | Compare leading and following-car drag and downforce in an illustrative wake model, including saved power and the grip tradeoff. |
+
+All stations include live readouts and explanatory captions. Speed-based stations provide speed presets and an animated speed sweep; the energy and braking stations have timeline playback, scrubbing, and playback-rate controls. The shared interface also includes station tabs, camera reset, engine sound, light/dark themes, and a **How it works** reference. Keyboard shortcuts are shown in the interface.
+
+Regulation facts cite the FIA 2026 Technical Regulations (Section C, Issue 20). Unpublished quantities such as aero coefficients, grip, and brake behavior are model assumptions and are identified as **estimates** in the app. The tow wake is illustrative, not CFD. See `src/physics/constants.ts` for values and sources.
 
 ## Run it
+
+Requires Node 22.12+.
 
 ```bash
 npm install
 npm run dev        # http://localhost:5173
-npm test           # physics unit tests (vitest)
-npm run build      # type-check + production build into dist/
+npm test           # physics and station unit tests (Vitest)
+npm run typecheck  # TypeScript check
+npm run build      # type-check + static production build into dist/
+npm run preview    # serve the production build locally
 ```
 
-Requires Node 22.12+. The site is fully static (`dist/`), see [docs/DEPLOY.md](docs/DEPLOY.md) for hosting.
+The app requires WebGL 2. If the processed car model cannot load, startup falls back to a procedural car so the explainer can still run. The site is fully static; see [docs/DEPLOY.md](docs/DEPLOY.md) for Cloudflare Pages and GitHub Pages hosting.
 
-## How it's built
+## Architecture
 
-- **Vite + TypeScript**, **three.js** (WebGL renderer, GTAO), **camera-controls** — no UI framework.
-- `src/physics/` — aero, power unit, lap simulation (unit-tested); `src/physics/constants.ts` holds every number with its source.
-- `src/scene/` — stage, the car, force arrows, airflow, wind tunnel, energy flow.
-- `src/stations/` — one folder per station (logic + captions); `src/app/` — routing, shared "garage" scene.
-- `src/ui/` — the spec-sheet interface (DOM + hand-drawn SVG charts).
-- `scripts/shot.mjs` — headless screenshots for visual checks; `scripts/model/` — the 3D model pipeline.
+The app is organized around a persistent 3D stage and garage. The app shell creates each station once, routes between stations by hash, and keeps shared state such as speed. A station owns the active experience: it combines physics results with garage commands and sends a typed view to the DOM UI.
+
+```mermaid
+flowchart LR
+  Browser[Browser / index.html] --> Main[src/main.ts]
+  Main --> Stage[src/scene/stage.ts<br/>Three.js renderer and camera]
+  Main --> Car[src/scene/car<br/>Load model or procedural fallback]
+  Main --> App[src/app/app.ts<br/>Routing and shared frame loop]
+  App --> Garage[src/app/garage.ts<br/>Shared car scene and transitions]
+  App --> Stations[src/stations/*<br/>Five station implementations]
+  App --> UI[src/ui/createUI.ts<br/>DOM shell and controls]
+  Stations --> Physics[src/physics/*<br/>Documented models]
+  Stations --> Garage
+  Stations --> UI
+  Garage --> Scene[src/scene/effects/*<br/>Airflow, forces, energy, tunnel]
+  Garage --> Stage
+  UI --> User[Controls, charts, readouts, captions]
+```
+
+### Frame and data flow
+
+```mermaid
+sequenceDiagram
+  actor Visitor
+  participant UI as DOM UI
+  participant App as App controller
+  participant Station as Active station
+  participant Physics as Physics model
+  participant Garage as Shared garage
+  participant Stage as Three.js stage
+
+  Visitor->>UI: Change speed, mode, gap, or playback
+  UI->>App: Report user intent
+  App->>Station: Forward station-specific input
+  loop Animation frame
+    App->>Station: frame(dt, shared speed)
+    Station->>Physics: Evaluate or sample model state
+    Physics-->>Station: Forces, power, lap sample, braking, or wake data
+    Station->>Garage: Set visual targets and update scene
+    Station->>UI: Render typed readouts, charts, and caption
+    Garage->>Stage: Update car, effects, and camera scene
+  end
+```
+
+Station routes are hash-based: `#/downforce`, `#/active-aero`, `#/energy`, `#/braking`, and `#/tow`.
+
+### Project layout
+
+| Path | Responsibility |
+|------|----------------|
+| `src/main.ts` | WebGL 2 check, stage/model startup, and fallback handling. |
+| `src/app/` | Station routing, shared speed and animation loop, garage scene, and engine sound. |
+| `src/stations/` | Station-specific configuration, interaction, captions, and view models. |
+| `src/physics/` | Aero, powertrain, track/lap, braking, and tow models; constants and sources; focused Vitest tests. |
+| `src/scene/` | Three.js stage, car assembly/materials, motion, and visual effects. |
+| `src/ui/` | Responsive DOM interface, station controls, readouts, charts, track map, captions, and reference dialog. |
+| `models/` and `public/models/` | Original model source and processed runtime asset. |
+| `scripts/model/` | Model inspection, processing, and geometry pipeline. |
+| `scripts/shot.mjs` | Headless browser screenshots for visual checks. |
+| `dev/` | Standalone development harnesses for individual visual and physics systems. |
+
+The UI is plain TypeScript and DOM; there is no UI framework. Vite builds the static app, Three.js renders the car and effects, and `camera-controls` handles camera interaction. Physics models are separate from rendering, and their tests run with Vitest.
+
+## Model and validation
+
+The checked-in runtime model is the processed GLB in `public/models/`; the larger original source is kept separately under `models/source/`. `npm run model` runs the model processing pipeline and may require substantial memory. `npm run shot` captures browser screenshots for visual checks. The static production output is `dist/`.
 
 ## Credits
 

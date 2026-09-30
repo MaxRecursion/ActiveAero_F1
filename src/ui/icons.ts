@@ -4,7 +4,7 @@
  */
 import { s } from './dom';
 
-export type IconName = 'play' | 'pause' | 'reset' | 'about' | 'close' | 'graph' | 'numbers' | 'wheel' | 'replay' | 'volume' | 'volumeMuted';
+export type IconName = 'play' | 'pause' | 'reset' | 'about' | 'close' | 'graph' | 'numbers' | 'wheel' | 'replay' | 'volume' | 'volumeMuted' | 'sun' | 'moon';
 
 const STROKE = { fill: 'none', stroke: 'currentColor', 'stroke-width': 1.6, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' };
 
@@ -39,6 +39,11 @@ const PARTS: Record<IconName, () => SVGElement[]> = {
   volumeMuted: () => [
     s('path', { d: 'M3 8v4h3l4 3V5L6 8H3M13 8l4 4M17 8l-4 4', ...STROKE }),
   ],
+  sun: () => [
+    s('circle', { cx: 10, cy: 10, r: 3.2, ...STROKE }),
+    s('path', { d: 'M10 2.5v1.8M10 15.7v1.8M17.5 10h-1.8M4.3 10H2.5M15.3 4.7 14 6M6 14l-1.3 1.3M15.3 15.3 14 14M6 6 4.7 4.7', ...STROKE }),
+  ],
+  moon: () => [s('path', { d: 'M16.2 12.6A6.7 6.7 0 0 1 7.4 3.8a6.8 6.8 0 1 0 8.8 8.8Z', ...STROKE })],
   // A spec-sheet table: header rule and a column rule.
   numbers: () => [
     s('rect', { x: 3.5, y: 4, width: 13, height: 12, rx: 1.2, ...STROKE }),

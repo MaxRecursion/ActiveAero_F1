@@ -1,3 +1,5 @@
+import type { Theme } from '../theme';
+
 /**
  * Shared colour language. The same meanings are used in 3D, in readouts and in captions:
  * blue = downforce, orange = drag, graphite = weight, green = electrical energy, slate = engine power.
@@ -39,6 +41,11 @@ export const PALETTE = {
   /** Brake heat: a red apart from drag's orange, so the two never read as one. */
   heat: 0xd92d4b,
 } as const;
+
+export const STUDIO_BACKGROUNDS: Record<Theme, number> = {
+  light: PALETTE.background,
+  dark: 0x171a1f,
+};
 
 /** CSS hex strings for the DOM side (same values as above). */
 export const CSS = {

@@ -14,7 +14,8 @@ import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { CSS2DRenderer } from 'three/addons/renderers/CSS2DRenderer.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-import { PALETTE } from './palette';
+import { STUDIO_BACKGROUNDS } from './palette';
+import type { Theme } from '../theme';
 
 CameraControls.install({ THREE });
 
@@ -79,6 +80,7 @@ export interface Stage {
   /** Current quality tier (0 = AO on, full DPR; 1 = no AO; 2 = DPR 1, no post). */
   readonly quality: number;
   setQuality(tier: 0 | 1 | 2): void;
+  setTheme(theme: Theme): void;
   start(): void;
   dispose(): void;
 }
@@ -114,8 +116,8 @@ export function createStage(opts: StageOptions): Stage {
   mount.appendChild(labels.domElement);
 
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(PALETTE.background);
-  scene.fog = new THREE.Fog(PALETTE.background, 22, 48);
+  scene.background = new THREE.Color(STUDIO_BACKGROUNDS.light);
+  scene.fog = new THREE.Fog(STUDIO_BACKGROUNDS.light, 22, 48);
 
   const pmrem = new THREE.PMREMGenerator(renderer);
   const room = new RoomEnvironment();
@@ -228,6 +230,21 @@ export function createStage(opts: StageOptions): Stage {
     resize();
   }
 
+  function setTheme(theme: Theme) {
+    const background = STUDIO_BACKGROUNDS[theme];
+    scene.background = new THREE.Color(background);
+    scene.fog?.color.setHex(background);
+    scene.traverse((object) => {
+      const materials = object instanceof THREE.Mesh
+        ? Array.isArray(object.material) ? object.material : [object.material]
+        : [];
+      for (const material of materials) {
+        const plate = (material as THREE.ShaderMaterial).uniforms?.uPlate?.value;
+        if (plate instanceof THREE.Color) plate.setHex(background);
+      }
+    });
+  }
+
   const ro = new ResizeObserver(resize);
   ro.observe(mount);
   setQuality(quality);
@@ -290,6 +307,7 @@ export function createStage(opts: StageOptions): Stage {
       return quality;
     },
     setQuality,
+    setTheme,
     onFrame(cb) {
       callbacks.add(cb);
       return () => callbacks.delete(cb);

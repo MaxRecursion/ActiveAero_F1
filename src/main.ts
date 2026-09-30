@@ -1,9 +1,12 @@
 import './styles/tokens.css';
+import { getTheme, initializeTheme } from './theme';
 import { startApp } from './app/app';
 import { buildCar } from './scene/car/buildCar';
 import { loadCar } from './scene/car/loadCar';
 import type { CarModel } from './scene/car/types';
 import { createStage, type Stage } from './scene/stage';
+
+initializeTheme();
 
 declare global {
   interface Window {
@@ -48,6 +51,7 @@ async function start(mountEl: HTMLElement) {
   let car: CarModel;
   try {
     stage = createStage({ mount: mountEl });
+    stage.setTheme(getTheme());
     car = await getCar();
     startApp(stage, uiRoot, car);
   } catch (err) {
