@@ -3,8 +3,9 @@
  *   forces.ts   → createForceArrows
  *   airflow.ts  → createAirflow
  *   tunnel.ts   → createWindTunnel
+ * Station 3 adds energyFlow.ts (createEnergyFlow), Station 4 axleLoads.ts (createAxleLoads).
  *
- * All three are fed plain numbers each frame by the station; they never import physics.
+ * Every effect is fed plain numbers each frame by the station; none imports physics.
  */
 import type * as THREE from 'three';
 import type { CarModel } from '../car/types';
@@ -103,6 +104,36 @@ export interface EnergyFlow {
   root: THREE.Group;
   setFlows(flows: EnergyFlows): void;
   /** 0–1 overall visibility (fades in with the X-ray). */
+  setOpacity(alpha: number): void;
+  update(dt: number): void;
+  dispose(): void;
+}
+
+// ── Axle loads (Station 4) ──────────────────────────────────────────────────────
+
+export interface AxleLoadValues {
+  /** Vertical load on each axle now, N. The solid arrow. */
+  frontN: number;
+  rearN: number;
+  /** The same axles without the braking transfer (weight + downforce), N. The faint outline. */
+  frontStaticN: number;
+  rearStaticN: number;
+}
+
+export interface AxleLoadsOptions {
+  car: CarModel;
+  /** Metres of arrow per newton, one scale for both axles. */
+  metresPerNewton: number;
+  /** Text for a tag from a force in newtons (no unit). */
+  formatForce: (newtons: number) => string;
+}
+
+export interface AxleLoads {
+  /** Add to the scene next to the car's rig; it follows the car's root each update. Hidden while its opacity is 0. */
+  root: THREE.Group;
+  /** Target loads. Arrow lengths ease toward them; the tags name the true values. */
+  setLoads(values: AxleLoadValues): void;
+  /** 0–1 overall opacity (arrows, outlines and tags). At 0 nothing is drawn. */
   setOpacity(alpha: number): void;
   update(dt: number): void;
   dispose(): void;

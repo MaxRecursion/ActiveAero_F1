@@ -10,7 +10,7 @@ import type { AeroSurfaceId } from '../physics/constants';
 import type { LapPhase } from '../physics/lap';
 import type { Insets } from '../scene/stage';
 
-export type StationId = 'downforce' | 'activeAero' | 'energy';
+export type StationId = 'downforce' | 'activeAero' | 'energy' | 'braking' | 'tow';
 
 export interface StationMeta {
   id: StationId;
@@ -22,11 +22,11 @@ export interface StationMeta {
   prompt: string;
 }
 
-export type ToggleId = 'airflow' | 'exploded' | 'ceiling' | 'xray' | 'clipping';
+export type ToggleId = 'airflow' | 'exploded' | 'ceiling' | 'xray' | 'clipping' | 'brakes';
 export type AeroMode = 'corner' | 'straight';
 
 /** A caption is a list of styled runs, rendered as spans (never innerHTML). */
-export type Tone = 'down' | 'drag' | 'weight' | 'energy' | 'engine' | 'strong' | 'muted';
+export type Tone = 'down' | 'drag' | 'weight' | 'energy' | 'engine' | 'heat' | 'strong' | 'muted';
 export interface CaptionRun {
   text: string;
   tone?: Tone;
@@ -45,8 +45,11 @@ export interface StationUIConfig {
   toggles: ToggleId[];
   /** "Test conditions" strip text for this station. */
   conditions: string;
-  /** Main control: the speed slider (default) or the lap timeline (Station 3). */
-  control?: 'speed' | 'lap';
+  /**
+   * Main control: the speed slider (default), the lap timeline (Station 3), or the speed slider as
+   * "brake from" speed plus a Brake button and a zone scrubber (Station 4).
+   */
+  control?: 'speed' | 'lap' | 'brake';
 }
 
 // ── Station 01 · Downforce ─────────────────────────────────────────────────────
@@ -143,17 +146,114 @@ export interface Station3View {
   caption: CaptionRun[];
 }
 
+// ── Station 04 · Braking ───────────────────────────────────────────────────────
+
+/** ready: cruising at the entry speed, pedal up. braking: a zone is playing (or paused). done: reached the apex speed. */
+export type BrakeState = 'ready' | 'braking' | 'done';
+
+export interface BrakePoint {
+  /** Time since the pedal went down, s. */
+  t: number;
+  kmh: number;
+  decelG: number;
+  /** Power the brakes take out of the car, kW (harvest + heat). */
+  brakeKw: number;
+  /** Power the motor-generator puts back into the battery, kW (≤ 350). */
+  harvestKw: number;
+  /** Power that turns into heat in the discs, kW. */
+  heatKw: number;
+  /** Disc temperatures, °C (one disc per axle side; the two sides match). */
+  frontDiscC: number;
+  rearDiscC: number;
+}
+
+/** Static description of one brake zone. The same object is re-sent every frame until the entry speed changes. */
+export interface BrakeTrace {
+  fromKmh: number;
+  toKmh: number;
+  timeS: number;
+  distanceM: number;
+  /** Thinned to about one point per 25 ms; the last point is the end of the zone. */
+  points: ReadonlyArray<BrakePoint>;
+  peakDecelG: number;
+  /** Where the car's kinetic energy goes over the whole zone, MJ. dragMJ + harvestMJ + heatMJ = kineticMJ. */
+  kineticMJ: number;
+  dragMJ: number;
+  harvestMJ: number;
+  heatMJ: number;
+  peakFrontDiscC: number;
+  peakRearDiscC: number;
+  /** The carbon-carbon working window, °C (350–550). */
+  discWindowC: { min: number; max: number };
+}
+
+export interface Station4View {
+  zone: BrakeTrace;
+  state: BrakeState;
+  /** Playhead time into the zone, s (0 … zone.timeS). */
+  tS: number;
+  /** Distance braked so far, m. */
+  sM: number;
+  kmh: number;
+  decelG: number;
+  brakeKw: number;
+  harvestKw: number;
+  heatKw: number;
+  /** Axle loads now, N: weight + downforce + the weight braking has thrown forward. */
+  frontLoadN: number;
+  rearLoadN: number;
+  /** The same axles' loads without the transfer (weight + downforce at this speed), N. */
+  frontStaticN: number;
+  rearStaticN: number;
+  /** Load moved from the rear axle to the front, N. */
+  transferN: number;
+  /** Ideal front brake bias now = front share of the total load, percent. */
+  frontBiasPct: number;
+  /** Real nose dip at the front axle in mm (before the exaggeration used in the 3D view). */
+  noseDropMm: number;
+  /** How many times the 3D view exaggerates the dive, e.g. 6. */
+  diveExaggeration: number;
+  frontDiscC: number;
+  rearDiscC: number;
+  /** Cumulative since the pedal went down, MJ. */
+  harvestedMJ: number;
+  heatMJ: number;
+  playing: boolean;
+  /** Playback rate: 0.25, 0.5 or 1 (1 = real time). */
+  rate: number;
+  caption: CaptionRun[];
+}
+
+export interface Station5View {
+  speedKmh: number;
+  gapM: number;
+  wakeStrength: number;
+  dragReduction: number;
+  downforceLoss: number;
+  leadingDragN: number;
+  followingDragN: number;
+  leadingDownforceN: number;
+  followingDownforceN: number;
+  powerSavedW: number;
+  caption: CaptionRun[];
+}
+
 export type StationView =
   | { station: 'downforce'; view: Station1View }
   | { station: 'activeAero'; view: Station2View }
-  | { station: 'energy'; view: Station3View };
+  | { station: 'energy'; view: Station3View }
+  | { station: 'braking'; view: Station4View }
+  | { station: 'tow'; view: Station5View };
 
 // ── Shell ──────────────────────────────────────────────────────────────────────
 
 export interface UIHandlers {
   /** User moved the speed control (slider drag, keys, preset click). */
   onSpeedInput(kmh: number): void;
+  onTowGapInput(gapM: number): void;
   onToggle(id: ToggleId, on: boolean): void;
+  /** Whether the engine sound is muted. */
+  onSoundToggle(muted: boolean): void;
   /** Play / stop the automatic speed sweep. */
   onPlayToggle(): void;
   onResetView(): void;
@@ -161,9 +261,12 @@ export interface UIHandlers {
   onStationChange(id: StationId): void;
   /** User picked Corner / Straight Mode (Station 2 switch, or key M to flip). */
   onAeroMode(mode: AeroMode): void;
-  /** User moved the lap playhead (timeline drag, map click, ←/→ keys), seconds into the lap. */
+  /**
+   * User moved the playhead (Station 3: timeline drag, map click, ←/→ keys; Station 4: the brake-zone
+   * chart), seconds in.
+   */
   onLapScrub(tS: number): void;
-  /** User picked a playback rate (0.5, 1 or 2). */
+  /** User picked a playback rate (Station 3: 0.5, 1 or 2; Station 4: 0.25, 0.5 or 1). */
   onLapRate(rate: number): void;
 }
 

@@ -16,14 +16,19 @@ import '@fontsource/ibm-plex-mono/500.css';
 import './ui.css';
 import './about.css';
 import './energy.css';
+import './brake.css';
 
 import type { Insets } from '../scene/stage';
-import type { AeroMode, StationId, StationUIConfig, ToggleId, UI, UIOptions } from './types';
+import type { AeroMode, BrakeState, Station5View, StationId, StationUIConfig, ToggleId, UI, UIOptions } from './types';
 import { h } from './dom';
 import { fmtKmh, fmtKmhAtLeast } from './format';
 import { icon, type IconName } from './icons';
 import { createAbout } from './about';
 import { createAeroReadouts } from './aeroReadouts';
+import { createBrakeChart } from './brakeChart';
+import { createBrakeControl } from './brakeControl';
+import { brakeAction, type BrakeAction } from './brakeMath';
+import { createBrakeReadouts } from './brakeReadouts';
 import { createCaption } from './caption';
 import { createForceChart } from './chart';
 import { createEnergyReadouts } from './energyReadouts';
@@ -34,6 +39,7 @@ import { createReadouts } from './readouts';
 import { createSpeedControl, type MarkerDef, type ScaleMarker } from './speedControl';
 import { createTabs } from './tabs';
 import { createTrackMap } from './trackMap';
+import { createTowReadouts } from './towReadouts';
 
 /**
  * Must match the layout breakpoints in ui.css.
@@ -56,6 +62,7 @@ const TOGGLES: Record<ToggleId, { label: string; key: string; short?: string }> 
   ceiling: { label: 'Ceiling test', key: 'C' },
   xray: { label: 'X-ray', key: 'X' },
   clipping: { label: 'Super clipping', key: 'S', short: 'Clipping' },
+  brakes: { label: 'See-through wheels', key: 'W' },
 };
 
 /** Scale markers per station. Station 2's top speeds sit ~11 km/h apart, so their labels stack. */
@@ -66,23 +73,27 @@ const MARKERS: Record<StationId, MarkerDef[]> = {
     { tone: 'drag-alt', row: 0, side: 'left' },
   ],
   energy: [],
+  braking: [],
+  tow: [],
 };
 
 const SPEED_LAW: Record<StationId, string> = {
   downforce: '2× the speed → 4× the force → 8× the drag power',
   activeAero: '',
   energy: '',
+  braking: '',
+  tow: '',
 };
 
 /** What the play button plays, per main control. */
 const PLAY_NOUN = { speed: 'speed sweep', lap: 'lap' } as const;
 
 /** Icon button with a hover/focus tooltip; `ariaKeys` uses the aria-keyshortcuts syntax. */
-function toolButton(name: IconName, label: string, ariaKeys: string, shownKeys: string) {
+function toolButton(name: IconName, label: string, ariaKeys?: string, shownKeys?: string) {
   const tipLabel = h('span', { class: 'tip-label', text: label });
-  const btn = h('button', { class: 'icon-btn', attrs: { type: 'button', 'aria-label': label, 'aria-keyshortcuts': ariaKeys } }, [
+  const btn = h('button', { class: 'icon-btn', attrs: { type: 'button', 'aria-label': label, ...(ariaKeys ? { 'aria-keyshortcuts': ariaKeys } : {}) } }, [
     icon(name),
-    h('span', { class: 'tip', attrs: { 'aria-hidden': 'true' } }, [tipLabel, h('kbd', { text: shownKeys })]),
+    h('span', { class: 'tip', attrs: { 'aria-hidden': 'true' } }, [tipLabel, shownKeys ? h('kbd', { text: shownKeys }) : null]),
   ]);
   return { btn, tipLabel };
 }
@@ -109,9 +120,12 @@ export function createUI(opts: UIOptions): UI {
 
   // ── toolbar ───────────────────────────────────────────────────────────────────
   const play = toolButton('play', 'Play speed sweep', 'Space', 'Space');
+  const sound = toolButton('volumeMuted', 'Unmute engine sound');
+  sound.btn.classList.add('sound-btn');
+  sound.btn.setAttribute('aria-pressed', 'false');
   const reset = toolButton('reset', 'Reset view', 'R', 'R');
   const info = toolButton('about', 'How it works', 'Shift+? H', '? · H');
-  const toolbar = h('div', { class: 'ui-toolbar', attrs: { role: 'toolbar', 'aria-label': 'View' } }, [play.btn, reset.btn, info.btn]);
+  const toolbar = h('div', { class: 'ui-toolbar', attrs: { role: 'toolbar', 'aria-label': 'View' } }, [sound.btn, play.btn, reset.btn, info.btn]);
 
   // ── dock ──────────────────────────────────────────────────────────────────────
   const speed = createSpeedControl({ ...opts, onInput: (kmh) => handlers.onSpeedInput(kmh) });
@@ -121,6 +135,10 @@ export function createUI(opts: UIOptions): UI {
 
   const s1 = { read: createReadouts(), chart: createForceChart(opts) };
   const s2 = { read: createAeroReadouts(), chart: createPowerChart() };
+  // Station 4 keeps the speed slider (as "Brake from") and adds the Brake button under it.
+  const brake = createBrakeControl({ onPlayToggle: () => handlers.onPlayToggle(), onRate: (rate) => handlers.onLapRate(rate) });
+  const tow = createTowReadouts(handlers.onTowGapInput);
+  speed.el.append(brake.el, tow.control);
   // Station 3 swaps the speed control for the lap control, and readouts + chart for its own.
   const lap = createLapControl({
     onPlayToggle: () => handlers.onPlayToggle(),
@@ -128,16 +146,21 @@ export function createUI(opts: UIOptions): UI {
     onScrub: (tS) => handlers.onLapScrub(tS),
   });
   const s3 = { read: createEnergyReadouts(), chart: createTrackMap((tS) => handlers.onLapScrub(tS)) };
+  const s4 = { read: createBrakeReadouts(), chart: createBrakeChart((tS) => handlers.onLapScrub(tS)) };
   s1.chart.el.id = 'ui-chart-downforce';
   s2.chart.el.id = 'ui-chart-activeAero';
   s3.chart.el.id = 'ui-chart-energy';
+  s4.chart.el.id = 'ui-chart-braking';
   s1.read.el.id = 'ui-read-downforce';
   s2.read.el.id = 'ui-read-activeAero';
   s3.read.el.id = 'ui-read-energy';
+  s4.read.el.id = 'ui-read-braking';
   const panels: Record<StationId, HTMLElement[]> = {
     downforce: [s1.read.el, s1.chart.el],
     activeAero: [s2.read.el, s2.chart.el, modeSwitch.el],
     energy: [s3.read.el, s3.chart.el],
+    braking: [s4.read.el, s4.chart.el, brake.el],
+    tow: [tow.el],
   };
   const panelEls = new Set(Object.values(panels).flat());
 
@@ -179,6 +202,9 @@ export function createUI(opts: UIOptions): UI {
     s2.chart.el,
     s3.read.el,
     s3.chart.el,
+    s4.read.el,
+    s4.chart.el,
+    tow.el,
   ]);
   const bottom = h('div', 'ui-bottom', [caption.el, dock]);
 
@@ -188,8 +214,10 @@ export function createUI(opts: UIOptions): UI {
   // ── station switching ─────────────────────────────────────────────────────────
   let active: StationId | null = null;
   let markers: ScaleMarker[] = [];
-  let control: 'speed' | 'lap' = 'speed';
+  let control: 'speed' | 'lap' | 'brake' = 'speed';
   let playing = false;
+  let soundMuted = true;
+  let brakeState: BrakeState = 'ready';
 
   function setStation(id: StationId) {
     const cfg = configs.get(id);
@@ -203,7 +231,9 @@ export function createUI(opts: UIOptions): UI {
     conditionsVals.textContent = cfg.conditions;
     showToggles(cfg);
     control = cfg.control ?? 'speed';
-    speed.el.hidden = control !== 'speed';
+    speed.el.hidden = control === 'lap';
+    tow.control.hidden = id !== 'tow';
+    speed.setLabel(control === 'brake' ? 'Brake from' : 'Speed');
     lap.el.hidden = control !== 'lap';
     const shown = new Set(panels[id]);
     for (const el of panelEls) el.hidden = !shown.has(el);
@@ -295,13 +325,26 @@ export function createUI(opts: UIOptions): UI {
   dock.addEventListener('keydown', onDockKey);
 
   const onPlay = () => handlers.onPlayToggle();
+  function syncSoundButton() {
+    const label = soundMuted ? 'Unmute engine sound' : 'Mute engine sound';
+    sound.btn.setAttribute('aria-label', label);
+    sound.btn.setAttribute('aria-pressed', String(!soundMuted));
+    sound.tipLabel.textContent = label;
+    sound.btn.querySelector('svg')?.replaceWith(icon(soundMuted ? 'volumeMuted' : 'volume'));
+  }
+  const onSoundToggle = () => {
+    soundMuted = !soundMuted;
+    syncSoundButton();
+    handlers.onSoundToggle(soundMuted);
+  };
   const onReset = () => handlers.onResetView();
   const onInfo = () => about.open(active);
+  sound.btn.addEventListener('click', onSoundToggle);
   play.btn.addEventListener('click', onPlay);
   reset.btn.addEventListener('click', onReset);
   info.btn.addEventListener('click', onInfo);
 
-  const KEY_TOGGLES: Record<string, ToggleId> = { a: 'airflow', e: 'exploded', c: 'ceiling', x: 'xray', s: 'clipping' };
+  const KEY_TOGGLES: Record<string, ToggleId> = { a: 'airflow', e: 'exploded', c: 'ceiling', x: 'xray', s: 'clipping', w: 'brakes' };
   function flipMode() {
     const next: AeroMode = modeSwitch.mode === 'corner' ? 'straight' : 'corner';
     modeSwitch.setMode(next);
@@ -390,17 +433,21 @@ export function createUI(opts: UIOptions): UI {
     syncPlayLabel();
   }
 
-  /** The toolbar's play button names what it plays on this station. */
-  let playIcon: boolean | null = null;
+  /** The toolbar's play button names what it does on this station. */
+  function playAction(): BrakeAction {
+    if (control === 'brake') return brakeAction(brakeState, playing);
+    return { label: `${playing ? 'Pause' : 'Play'} ${PLAY_NOUN[control]}`, icon: playing ? 'pause' : 'play' };
+  }
+  let shownIcon: IconName | null = null;
   function syncPlayLabel() {
-    const label = `${playing ? 'Pause' : 'Play'} ${PLAY_NOUN[control]}`;
-    if (play.btn.getAttribute('aria-label') !== label) {
-      play.btn.setAttribute('aria-label', label);
-      play.tipLabel.textContent = label;
+    const action = playAction();
+    if (play.btn.getAttribute('aria-label') !== action.label) {
+      play.btn.setAttribute('aria-label', action.label);
+      play.tipLabel.textContent = action.label;
     }
-    if (playIcon !== playing) {
-      playIcon = playing;
-      play.btn.querySelector('svg')?.replaceWith(icon(playing ? 'pause' : 'play'));
+    if (shownIcon !== action.icon) {
+      shownIcon = action.icon;
+      play.btn.querySelector('svg')?.replaceWith(icon(action.icon));
     }
   }
 
@@ -426,7 +473,18 @@ export function createUI(opts: UIOptions): UI {
         s3.read.render(v);
         s3.chart.render(v);
         caption.render(v.caption);
-      } else {
+      } else if (sv.station === 'braking') {
+        const v = sv.view;
+        if (v.playing !== playing || v.state !== brakeState) {
+          brakeState = v.state;
+          setPlaying(v.playing);
+        }
+        speed.render(v.zone.fromKmh);
+        brake.render(v);
+        s4.read.render(v);
+        s4.chart.render(v);
+        caption.render(v.caption);
+      } else if (sv.station === 'activeAero') {
         const v = sv.view;
         speed.render(v.speedKmh);
         markers[0]?.set(v.topSpeedCornerKmh, `Top · Corner ${fmtKmh(v.topSpeedCornerKmh)}`);
@@ -434,6 +492,11 @@ export function createUI(opts: UIOptions): UI {
         modeSwitch.render(v.straightT);
         s2.read.render(v);
         s2.chart.render(v.speedKmh, v.mode, v.availablePowerW, v.requiredPowerW);
+        caption.render(v.caption);
+      } else {
+        const v: Station5View = sv.view;
+        speed.render(v.speedKmh);
+        tow.render(v);
         caption.render(v.caption);
       }
     },
@@ -453,6 +516,7 @@ export function createUI(opts: UIOptions): UI {
       dock.removeEventListener('keydown', onDockKey);
       for (const mq of [sheetMq, sideMq, compactMq]) mq.removeEventListener('change', notifyLayout);
       play.btn.removeEventListener('click', onPlay);
+      sound.btn.removeEventListener('click', onSoundToggle);
       reset.btn.removeEventListener('click', onReset);
       info.btn.removeEventListener('click', onInfo);
       ro.disconnect();
@@ -461,10 +525,13 @@ export function createUI(opts: UIOptions): UI {
       tabs.dispose();
       speed.dispose();
       lap.dispose();
+      brake.dispose();
+      tow.dispose();
       s3.chart.dispose();
       modeSwitch.dispose();
       s1.chart.dispose();
       s2.chart.dispose();
+      s4.chart.dispose();
       about.dispose();
       header.remove();
       toolbar.remove();

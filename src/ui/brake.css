@@ -1,0 +1,349 @@
+/*
+ * Station 04 · Braking — the Brake button under the speed slider (zone A), the readouts (zone B)
+ * and the brake-zone chart (zone C). Same spec-sheet language as ui.css; loaded after energy.css.
+ *
+ * Colour: red (--heat) is heat in the discs, green (--energy) is power put back in the battery,
+ * orange (--drag) is air drag, graphite is load and speed. The 3D discs glow in the same red.
+ * Breakpoints mirror ui.css (and the queries in createUI.ts).
+ */
+
+.tone-heat { color: color-mix(in oklab, var(--heat) 80%, #000); font-weight: 600; }
+
+/* ── dock layout ─────────────────────────────────────────────────────────────── */
+
+.ui-dock[data-station='braking'] {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) minmax(0, 1.1fr);
+}
+
+/* ── zone A: the Brake button and the replay speed, under the slider ───────────── */
+
+.brake-ctrl {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px solid var(--rule);
+}
+.brake-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 36px;
+  padding: 0 14px 0 12px;
+  border: 1px solid var(--ink);
+  border-radius: var(--radius);
+  background: var(--ink);
+  color: var(--paper);
+  font: 600 14px/1 var(--font-ui);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s, border-color 0.15s;
+}
+.brake-btn:hover { background: #2a2d34; }
+.brake-btn .icon { flex: none; width: 18px; height: 18px; }
+.brake-btn[data-state='playing'] { background: var(--paper); color: var(--ink); }
+.brake-btn[data-state='playing']:hover { background: var(--paper-2); }
+.brake-rate { display: flex; flex-direction: column; gap: 4px; flex: none; }
+.brake-rate-title { font-size: 10px; }
+
+/* ── zone B: readouts ────────────────────────────────────────────────────────── */
+
+.ro-grid--brake {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-areas:
+    'hero   power'
+    'axles  discs'
+    'ledger ledger';
+  gap: 12px 22px;
+}
+.ro--hero { grid-area: hero; }
+.brake-power { grid-area: power; }
+.brake-axles { grid-area: axles; }
+.brake-discs { grid-area: discs; }
+.brake-ledger { grid-area: ledger; }
+
+.brake-block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.brake-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 2px 8px;
+}
+.brake-aside {
+  font: 500 12px/1.2 var(--font-num);
+  letter-spacing: 0;
+  text-transform: none;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.ro--hero .ro-num { font-size: 44px; letter-spacing: -0.03em; }
+.ro--hero .ro-value { gap: 4px; }
+.rb-speed {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3px;
+  margin-left: 10px;
+}
+.rb-kmh {
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.ro--hero .ro-sub { margin-top: 0; }
+.ro--hero .ro-value + .ro-sub { margin-top: 5px; }
+.brake-state {
+  padding: 2px 7px;
+  border: 1px solid var(--rule-strong);
+  border-radius: 3px;
+  font: 600 11px/1.2 var(--font-ui);
+  letter-spacing: 0.02em;
+  text-transform: none;
+  color: var(--ink-2);
+}
+.zone-read--brake[data-state='braking'] .brake-state { border-color: var(--ink); background: var(--ink); color: var(--paper); }
+.zone-read--brake[data-state='done'] .brake-state { border-color: var(--ink); color: var(--ink); }
+
+/* Bars: one track per reading, fixed scale, so a change in length is a change in the car. */
+.rb-track {
+  position: relative;
+  height: 10px;
+  border-radius: 1px;
+  background: var(--paper-2);
+  box-shadow: inset 0 0 0 1px var(--rule);
+}
+.rb-track--power { height: 14px; }
+.rb-track--ledger { height: 12px; }
+.rb-fill,
+.rb-move,
+.rb-ghost {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(var(--x, 0) * 100%);
+  width: calc(var(--w, 0) * 100%);
+}
+.rb-fill--battery { background: var(--energy); }
+.rb-fill--heat,
+.rb-fill--disc { background: var(--heat); }
+.rb-fill--load { left: 0; background: var(--weight); }
+/* Weight that moved: striped, on top of the load at the front and in the gap it left at the rear. */
+.rb-move,
+.rb-swatch--move { background: repeating-linear-gradient(135deg, var(--paper) 0 1.6px, var(--weight) 1.6px 4px); }
+.rb-tick,
+.rb-cap {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  left: calc(var(--x, 0) * 100%);
+  border-left: 1.5px solid var(--ink);
+  margin-left: -0.75px;
+}
+.rb-window {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  left: calc(var(--x, 0) * 100%);
+  width: calc(var(--w, 0) * 100%);
+  border: 1.5px solid var(--ink-2);
+  background: rgb(255 255 255 / 0.3);
+}
+.rb-ghost--drag { background: var(--drag); opacity: 0.55; }
+.rb-ghost--battery { background: rgb(18 163 109 / 0.22); }
+.rb-ghost--heat { background: rgb(217 45 75 / 0.22); }
+
+.rb-total-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+}
+.rb-total { min-width: 62px; }
+.rb-row {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) 34px;
+  align-items: center;
+  gap: 8px;
+}
+.rb-name { font: 500 12px/1.2 var(--font-ui); color: var(--ink-2); }
+.rb-num {
+  font: 500 13px/1 var(--font-num);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+.rb-keys {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px 12px;
+  font: 500 11.5px/1.2 var(--font-ui);
+  color: var(--ink-2);
+}
+.rb-key { white-space: nowrap; }
+.rb-swatch {
+  display: inline-block;
+  width: 12px;
+  height: 8px;
+  margin-right: 5px;
+  border-radius: 1px;
+  vertical-align: 0;
+}
+.rb-swatch--battery { background: var(--energy); }
+.rb-swatch--heat { background: var(--heat); }
+.rb-swatch--drag { background: var(--drag); opacity: 0.55; }
+.rb-swatch--tick,
+.rb-swatch--peak { width: 0; height: 11px; margin-right: 6px; border-radius: 0; border-left: 1.5px solid var(--ink); vertical-align: -1px; }
+.rb-swatch--window { border: 1.5px solid var(--ink-2); background: rgb(255 255 255 / 0.3); }
+.rb-strong { font: 600 12.5px/1 var(--font-num); font-variant-numeric: tabular-nums; color: var(--ink); }
+.rb-of { font: 400 12px/1 var(--font-num); font-variant-numeric: tabular-nums; color: var(--ink-3); }
+.rb-cap-key {
+  display: inline-block;
+  height: 10px;
+  margin-right: 3px;
+  border-left: 1.5px solid var(--ink);
+  vertical-align: -1px;
+}
+.rb-note { font-size: 11.5px; color: var(--ink-3); }
+.rb-facts { display: flex; flex-direction: column; gap: 2px; font-size: 12.5px; }
+.rb-facts .rb-strong { font-size: 12.5px; }
+
+/* ── zone C: the brake-zone chart ────────────────────────────────────────────── */
+
+.brake-plot {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 124px;
+  border-radius: 3px;
+  cursor: pointer;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.brake-plot.is-dragging { cursor: ew-resize; }
+.brake-plot:focus-visible { outline: 2px solid var(--down); outline-offset: 3px; }
+.brake-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  font-family: var(--font-num);
+}
+.brake-speed { fill: none; stroke: var(--ink); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.brake-g-area { fill: var(--weight); fill-opacity: 0.16; }
+.brake-g-line { fill: none; stroke: var(--ink-2); stroke-width: 1.25; stroke-linejoin: round; }
+.brake-future { opacity: 0.3; }
+.brake-corner { stroke: var(--ink-3); stroke-width: 1; stroke-dasharray: 4 3; }
+.brake-g-tick { fill: var(--ink-2); }
+.brake-hint {
+  font: 500 12px var(--font-ui);
+  fill: var(--ink-2);
+  paint-order: stroke;
+  stroke: var(--paper);
+  stroke-width: 4px;
+  stroke-linejoin: round;
+}
+.brake-head-line { stroke: var(--ink); stroke-width: 1.5; }
+.brake-handle-body { fill: var(--paper); stroke: var(--ink); stroke-width: 1.5; }
+.brake-handle-grip { stroke: var(--ink); stroke-width: 1.5; }
+.brake-plot:focus-visible .brake-handle-body { stroke: var(--down); }
+.brake-dot { stroke: var(--paper); stroke-width: 2; }
+.brake-dot--speed { fill: var(--ink); }
+.brake-dot--g { fill: var(--ink-2); }
+.legend-key--speed { border-top: 2px solid var(--ink); }
+.legend-key--g {
+  height: 8px;
+  border-top: 1.5px solid var(--ink-2);
+  background: rgb(42 44 49 / 0.16);
+}
+.legend-key--corner { border-top: 1.5px dashed var(--ink-3); }
+
+/* ── tablet ──────────────────────────────────────────────────────────────────── */
+
+@media (max-width: 899.98px) {
+  .ui-dock[data-station='braking'] { grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); }
+}
+
+/* ── short screens: compact dock ─────────────────────────────────────────────── */
+
+@media (max-height: 760px) and (min-height: 600.02px) and (min-width: 720px) {
+  .brake-btn { height: 32px; }
+  .brake-ctrl { padding-top: 6px; }
+  .ro--hero .ro-num { font-size: 34px; }
+  .rb-kmh { font-size: 19px; }
+  .ro-grid--brake { gap: 8px 18px; }
+  .brake-block { gap: 4px; }
+  .ro-route,
+  .rb-note,
+  .rb-keys--axle { display: none; }
+  .brake-plot { min-height: 96px; }
+}
+
+/* ── phone sheet (and every screen ≤ 600 px tall) ─────────────────────────────── */
+
+@media (max-width: 719.98px), (max-height: 600px) {
+  .ui-dock[data-station='braking'] { grid-template-columns: minmax(0, 1fr); }
+  .ui-dock[data-station='braking'] .toggles { grid-template-columns: minmax(0, 1fr); }
+  .brake-ctrl { padding-top: 8px; gap: 10px; }
+  .brake-btn { height: 40px; font-size: 15px; }
+  .brake-rate-title { display: none; }
+  .ro-grid--brake {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas:
+      'hero   power'
+      'axles  discs';
+    gap: 10px 14px;
+  }
+  .ro--hero .ro-num { font-size: 36px; }
+  .rb-kmh { font-size: 19px; }
+  .ro-route,
+  .rb-note,
+  .rb-keys--axle,
+  .brake-ledger,
+  .rb-fact:nth-child(n + 2) { display: none; }
+  .brake-block { gap: 5px; }
+  .brake-plot { min-height: 140px; }
+}
+
+/* ── compact: ≤ 600 px tall — readouts and chart are drawers; the Brake button stays ─ */
+
+@media (max-height: 600px) {
+  .brake-btn { height: 34px; }
+  .ui-dock[data-station] .brake-plot { min-height: 0; }
+  .ro-grid--brake { grid-template-areas: 'hero power' 'axles discs' 'ledger ledger'; }
+  .brake-ledger,
+  .rb-fact:nth-child(n + 2) { display: flex; }
+}
+
+/* A wide compact sheet: the numbers drawer in three columns. */
+@container dock (min-width: 480px) {
+  .ro-grid--brake {
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr) minmax(0, 1fr);
+    grid-template-areas:
+      'hero   power  axles'
+      'ledger discs  axles';
+  }
+}
+
+/* Side panel: the drawer flies out to the left at a fixed width. */
+@media (max-height: 600px) and (min-width: 640px) and (min-aspect-ratio: 3/2) {
+  .ui-dock.is-numbers-open .zone-read--brake { width: min(380px, calc(100vw - 100% - 44px)); }
+}
+
+/* Four station tabs are wider than the space left of the toolbar on narrow phones: start the
+   tab row below the toolbar instead of under it. */
+@media (max-width: 479.98px) and (min-height: 600.02px) {
+  .header-meta { margin-top: 20px; }
+}

@@ -4,6 +4,7 @@
  */
 
 const oneDecimal = new Intl.NumberFormat('en-GB', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const twoDecimal = new Intl.NumberFormat('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const int = new Intl.NumberFormat('en-GB', { maximumFractionDigits: 0 });
 
 /** Thin space as the thousands separator: "1 390" reads as one number and never as a list. */
@@ -53,6 +54,31 @@ export const fmtSignedKw = (kw: number): string => {
   const r = Math.round(kw);
   return r > 0 ? `+${grouped(r)}` : r < 0 ? `${MINUS}${grouped(-r)}` : '0';
 };
+
+/** Deceleration in g → "4.5". */
+export const fmtG = (g: number): string => oneDecimal.format(Math.max(0, g));
+
+/** Kilowatts → "2 469" (integer, thin-space thousands, clamped at 0). */
+export const fmtKilowatts = (kw: number): string => grouped(Math.max(0, kw));
+
+/** Degrees Celsius → "726" (integer). */
+export const fmtC = (c: number): string => grouped(c);
+
+/** Millimetres → "43" (integer, clamped at 0). */
+export const fmtMm = (mm: number): string => grouped(Math.max(0, mm));
+
+/** Percent → "58" (integer). */
+export const fmtPct = (p: number): string => grouped(p);
+
+/** Megajoules → "0.66" (two decimals: a stop's parts are a few tenths of a megajoule). */
+export const fmtMJ2 = (mj: number): string => twoDecimal.format(Math.max(0, mj));
+
+/** Metres → "116" (integer, clamped at 0). */
+export const fmtMetres = (m: number): string => grouped(Math.max(0, m));
+
+/** Screen-reader text for the brake-zone chart: "1.2 seconds, 64 metres, 212 kilometres per hour". */
+export const spokenZonePosition = (tS: number, sM: number, kmh: number): string =>
+  `${oneDecimal.format(tS)} seconds, ${Math.round(sM)} metres, ${Math.round(kmh)} kilometres per hour`;
 
 /** Screen-reader text for the lap timeline: "23 seconds, 1.4 km, after T3". */
 export const spokenLapPosition = (tS: number, sM: number, where: string): string =>

@@ -5,16 +5,53 @@
  * material swaps. Only how the parts are made differs between the two cars.
  */
 import * as THREE from 'three';
-import { PartMaterials } from './materials';
+import { AXLE_X, TYRE } from './dims';
+import { PartMaterials, WHEEL_LOOKS } from './materials';
+import { Brakes } from './parts/brakes';
 import type { CarAnchors, CarModel, CarPart, PartGroup, PartId } from './types';
-import { XrayShell } from './xray';
+import { GhostSwap } from './xray';
 
 type V3 = THREE.Vector3Tuple;
 
 interface Entry extends CarPart {
   materials: PartMaterials;
-  /** Share of the ride-height drop this part follows: 1 sprung, 0.5 suspension, 0 wheels. */
+  /** Share of the ride-height drop and of the braking pitch this part follows: 1 sprung, 0.5 suspension, 0 wheels. */
   dropShare: number;
+}
+
+/** The body may come this close to the road under pitch, m: the plank scrapes, it does not go through. */
+const MIN_CLEARANCE_M = 0.004;
+/** The clearance check keeps a lowest point for every slice of the car this wide along X, m. */
+const SLICE_M = 0.01;
+/** Only points this low can touch the road under any pitch the story shows, m. */
+const LOW_POINT_Y = 0.4;
+
+interface LowPoint {
+  x: number;
+  y: number;
+  share: number;
+}
+
+/** The lowest point of each slice along X of every part that pitches with the body. */
+function lowPoints(entries: readonly Entry[]): LowPoint[] {
+  const lowest = new Map<string, LowPoint>();
+  const p = new THREE.Vector3();
+  for (const e of entries) {
+    if (e.dropShare === 0) continue;
+    e.object.traverse((o) => {
+      if (!(o instanceof THREE.Mesh)) return;
+      const position = o.geometry.getAttribute('position');
+      for (let i = 0; i < position.count; i++) {
+        p.fromBufferAttribute(position, i).applyMatrix4(o.matrixWorld);
+        if (p.y > LOW_POINT_Y) continue;
+        const key = `${e.dropShare}:${Math.round(p.x / SLICE_M)}`;
+        const known = lowest.get(key);
+        if (!known || p.y < known.y) lowest.set(key, { x: p.x, y: p.y, share: e.dropShare });
+      }
+    });
+  }
+  // Grouped by share, so the solver turns each group's angle once.
+  return [...lowest.values()].sort((a, b) => a.share - b.share);
 }
 
 /** What differs between cars once the parts exist. */
@@ -34,6 +71,8 @@ export class CarAssembly {
   readonly root = new THREE.Group();
   readonly parts = new Map<PartId, CarPart>();
   readonly exteriorMeshes: THREE.Mesh[] = [];
+  /** Rotors and calipers; each wheel builder fits them after `add` so they stay out of `exteriorMeshes`. */
+  readonly brakes = new Brakes();
   private readonly entries: Entry[] = [];
 
   constructor() {
@@ -49,7 +88,7 @@ export class CarAssembly {
     build: (mats: PartMaterials) => T,
     { dropShare = 1, exterior = true } = {},
   ): T => {
-    const materials = new PartMaterials();
+    const materials = new PartMaterials(group === 'wheels' ? WHEEL_LOOKS : {});
     const object = build(materials);
     object.name = id;
     this.root.add(object);
@@ -83,15 +122,58 @@ export class CarAssembly {
 
   /** The finished model; call once every part and anchor exists. */
   toModel({ anchors, shell, spinners, setActiveAero, spread }: RigOptions): CarModel {
-    const { root, parts, exteriorMeshes, entries } = this;
-    const xray = new XrayShell(entries.filter((e) => shell.includes(e.id)));
+    const { root, parts, exteriorMeshes, entries, brakes } = this;
+    const xray = new GhostSwap(entries.filter((e) => shell.includes(e.id)));
+    const wheelGhost = new GhostSwap(entries.filter((e) => e.group === 'wheels'));
+    root.updateMatrixWorld(true);
+    const low = lowPoints(entries);
+    const wheelbase = AXLE_X.front - AXLE_X.rear;
+    const pivotY = TYRE.rear.radius;
 
     let explode = 0;
     let drop = 0;
+    // The body's pitch: a turn `angle` about the axis through (pivotX, pivotY), then a lift that keeps its lowest points off the road.
+    const pitch = { noseDrop: 0, tailRise: 0, angle: 0, pivotX: 0, lift: 0 };
+
+    const solvePitch = (): void => {
+      const { noseDrop, tailRise } = pitch;
+      const total = noseDrop + tailRise;
+      pitch.angle = Math.abs(total) < 1e-9 ? 0 : Math.asin(THREE.MathUtils.clamp(-total / wheelbase, -0.5, 0.5));
+      pitch.pivotX = pitch.angle === 0 ? 0 : AXLE_X.front - (wheelbase * noseDrop) / total;
+      pitch.lift = 0;
+      if (pitch.angle === 0) return;
+      let turned = NaN;
+      let sin = 0;
+      let cos = 1;
+      for (const { x, y, share } of low) {
+        if (share !== turned) {
+          turned = share;
+          sin = Math.sin(pitch.angle * share);
+          cos = Math.cos(pitch.angle * share);
+        }
+        const y0 = y - drop * share;
+        const pitched = pivotY + (x - pitch.pivotX) * sin + (y - pivotY) * cos - drop * share;
+        // A point already lower than the clearance is only stopped from going lower still.
+        pitch.lift = Math.max(pitch.lift, (Math.min(MIN_CLEARANCE_M, y0) - pitched) / share);
+      }
+    };
+
     const place = (): void => {
       for (const e of entries) {
-        e.object.position.copy(e.explodeOffset).multiplyScalar(explode);
-        e.object.position.y -= drop * e.dropShare;
+        const o = e.object;
+        o.position.copy(e.explodeOffset).multiplyScalar(explode);
+        o.position.y -= drop * e.dropShare;
+        if (pitch.angle === 0 || e.dropShare === 0) {
+          o.rotation.z = 0;
+          continue;
+        }
+        const a = pitch.angle * e.dropShare;
+        const c = Math.cos(a);
+        const s = Math.sin(a);
+        const px = pitch.pivotX;
+        o.rotation.z = a;
+        o.position.x += px - (c * px - s * pivotY);
+        o.position.y += pivotY - (s * px + c * pivotY) + pitch.lift * e.dropShare;
       }
       if (spread) for (const [half, side] of spread.halves) half.position.z = side * spread.amount * explode;
     };
@@ -111,6 +193,13 @@ export class CarAssembly {
       },
       setRideHeightDrop(metres) {
         drop = metres;
+        solvePitch();
+        place();
+      },
+      setPitch(noseDropM, tailRiseM) {
+        pitch.noseDrop = noseDropM;
+        pitch.tailRise = tailRiseM;
+        solvePitch();
         place();
       },
       setActiveAero(t) {
@@ -123,12 +212,21 @@ export class CarAssembly {
       setXray(t) {
         xray.set(t);
       },
+      setBrakeTemps(frontC, rearC) {
+        brakes.setTemps(frontC, rearC);
+      },
+      setWheelGhost(t) {
+        const k = THREE.MathUtils.clamp(t, 0, 1);
+        wheelGhost.set(k);
+        brakes.setVisible(k > 0);
+      },
       dispose() {
         root.removeFromParent();
         root.traverse((o) => {
           if (o instanceof THREE.Mesh) o.geometry.dispose();
         });
         for (const e of entries) e.materials.dispose();
+        brakes.dispose();
         parts.clear();
         exteriorMeshes.length = 0;
       },

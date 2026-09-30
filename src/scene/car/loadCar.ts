@@ -119,15 +119,15 @@ export function assembleCar(scene: THREE.Object3D): CarModel {
   let rearWheelY = 0;
   WHEELS.forEach(([id, label], i) => {
     const side = id.endsWith('L') ? -1 : 1;
-    add(id, label, 'wheels', [0, 0, side * 0.6], (mats) => {
-      const n = wheelNodes[i] as THREE.Mesh;
-      const { centre } = n.userData as { centre: V3 };
+    const { centre } = wheelNodes[i].userData as { centre: V3 };
+    const wheel = add(id, label, 'wheels', [0, 0, side * 0.6], (mats) => {
       if (id === 'wheelRL') rearWheelY = centre[1];
-      const spinner = mountWheel(n, new THREE.Vector3(...centre), mats);
+      const spinner = mountWheel(wheelNodes[i] as THREE.Mesh, new THREE.Vector3(...centre), mats);
       spinners.push(spinner);
       for (const hub of hubs[i]) finish(hub, mats, 'rim');
       return wrap(id, spinner, ...hubs[i]);
     }, { dropShare: 0 });
+    car.brakes.mount(wheel, spinners[i], new THREE.Vector3(...centre), id.startsWith('wheelF') ? 'front' : 'rear', side);
   });
 
   // The rear crash structure is bolted to the gearbox, so it rides with it.

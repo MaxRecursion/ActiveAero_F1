@@ -21,6 +21,9 @@ export const PALETTE = {
   tyreSidewall: 0x2a2b2f,
   rim: 0x55585f,
   metal: 0x8b9099,
+  /** Brake discs: carbon-carbon is matte black until it heats up. */
+  disc: 0x18191c,
+  caliper: 0x9aa0aa,
   helmet: 0xf2f0eb,
   visor: 0x16181d,
   // physics (meaningful colours)
@@ -33,6 +36,8 @@ export const PALETTE = {
   energy: 0x12a36d,
   /** Mechanical power from the engine. */
   engine: 0x6b6f78,
+  /** Brake heat: a red apart from drag's orange, so the two never read as one. */
+  heat: 0xd92d4b,
 } as const;
 
 /** CSS hex strings for the DOM side (same values as above). */
@@ -42,4 +47,5 @@ export const CSS = {
   weight: '#2a2c31',
   energy: '#12a36d',
   engine: '#6b6f78',
+  heat: '#d92d4b',
 } as const;

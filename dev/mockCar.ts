@@ -16,6 +16,7 @@ export function createMockCar(): CarModel {
   const carbon = new THREE.MeshStandardMaterial({ color: PALETTE.carbon, roughness: 0.55 });
   const tyre = new THREE.MeshStandardMaterial({ color: PALETTE.tyre, roughness: 0.9 });
   const metal = new THREE.MeshStandardMaterial({ color: PALETTE.metal, roughness: 0.5, metalness: 0.4 });
+  const discs = { front: new THREE.MeshStandardMaterial({ color: PALETTE.disc }), rear: new THREE.MeshStandardMaterial({ color: PALETTE.disc }) };
   const geometries: THREE.BufferGeometry[] = [];
   const exteriorMeshes: THREE.Mesh[] = [];
   const parts = new Map<PartId, CarPart>();
@@ -70,6 +71,7 @@ export function createMockCar(): CarModel {
   const gearbox = part('gearbox', 'Gearbox', 'powertrain', [-0.3, 0.22, 0]);
   box(gearbox, [-2.36, -1.42, 0.2, 0.44, 0.2], carbon);
 
+  const brakeMeshes: THREE.Mesh[] = [];
   const wheelIds: PartId[] = ['wheelFL', 'wheelFR', 'wheelRL', 'wheelRR'];
   const wheels = wheelIds.map((id) => {
     const front = id.startsWith('wheelF');
@@ -85,6 +87,13 @@ export function createMockCar(): CarModel {
     mesh.castShadow = mesh.receiveShadow = true;
     obj.add(mesh);
     exteriorMeshes.push(mesh);
+    const discGeo = new THREE.CylinderGeometry(front ? 0.14 : 0.125, front ? 0.14 : 0.125, 0.03, 24).rotateX(Math.PI / 2);
+    geometries.push(discGeo);
+    const disc = new THREE.Mesh(discGeo, front ? discs.front : discs.rear);
+    disc.position.copy(mesh.position);
+    disc.visible = false;
+    obj.add(disc);
+    brakeMeshes.push(disc);
     return mesh;
   });
 
@@ -101,19 +110,55 @@ export function createMockCar(): CarModel {
     rearAxle: anchor(gearbox, -1.7, 0.355),
   };
 
+  let explode = 0;
+  let pitchAngle = 0;
+  let pivotX = 0;
+  // Rigid turn of everything but the wheels about the axle line; no clearance handling.
+  function place() {
+    for (const p of parts.values()) {
+      p.object.position.copy(p.explodeOffset).multiplyScalar(explode);
+      p.object.rotation.z = 0;
+      if (p.group === 'wheels' || pitchAngle === 0) continue;
+      const c = Math.cos(pitchAngle);
+      const s = Math.sin(pitchAngle);
+      p.object.rotation.z = pitchAngle;
+      p.object.position.x += pivotX - (c * pivotX - s * 0.355);
+      p.object.position.y += 0.355 - (s * pivotX + c * 0.355);
+    }
+  }
+
   return {
     root,
     parts,
     anchors,
     exteriorMeshes,
     setExplode(t) {
-      for (const p of parts.values()) p.object.position.copy(p.explodeOffset).multiplyScalar(t);
+      explode = t;
+      place();
     },
     setWheelSpin(angle) {
       // Rolling forward (+X) turns the wheel clockwise seen from +Z: negative about Z.
       for (const w of wheels) w.rotation.z = -angle;
     },
     setRideHeightDrop() {},
+    setPitch(noseDropM, tailRiseM) {
+      const total = noseDropM + tailRiseM;
+      pitchAngle = total === 0 ? 0 : Math.asin(-total / 3.4);
+      pivotX = total === 0 ? 0 : 1.7 - (3.4 * noseDropM) / total;
+      place();
+    },
+    setBrakeTemps(frontC, rearC) {
+      for (const [m, c] of [[discs.front, frontC], [discs.rear, rearC]] as const) {
+        m.emissive.setRGB(1, 0.35, 0.05);
+        m.emissiveIntensity = THREE.MathUtils.clamp((c - 350) / 550, 0, 1) * 2;
+      }
+    },
+    setWheelGhost(t) {
+      if (tyre.transparent !== t > 0) tyre.needsUpdate = true;
+      tyre.transparent = t > 0;
+      tyre.opacity = 1 - 0.75 * t;
+      for (const d of brakeMeshes) d.visible = t > 0;
+    },
     setActiveAero() {},
     setHighlight() {},
     setXray(t) {
@@ -127,7 +172,7 @@ export function createMockCar(): CarModel {
     dispose() {
       root.removeFromParent();
       for (const g of geometries) g.dispose();
-      for (const m of [clay, carbon, tyre, metal]) m.dispose();
+      for (const m of [clay, carbon, tyre, metal, discs.front, discs.rear]) m.dispose();
     },
   };
 }

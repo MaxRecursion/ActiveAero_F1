@@ -30,6 +30,7 @@ export interface Station {
   onPlayToggle?(): void;
   onLapScrub?(tS: number): void;
   onLapRate?(rate: number): void;
+  onTowGap?(gapM: number): void;
   /** Take over the garage and UI (called after the previous station exited). */
   enter(): void;
   /** Put anything the station changed back to neutral. */

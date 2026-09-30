@@ -93,6 +93,25 @@ export interface CarModel {
    * ghost so the power unit, battery and gearbox inside are clearly visible. Wings, floor, wheels stay solid.
    */
   setXray(t: number): void;
+  /**
+   * Braking pitch, Station 4: the sprung body turns rigidly about the axle line so its underside
+   * dips `noseDropM` at the front axle and rises `tailRiseM` at the rear axle (metres, both 0 = no
+   * pitch, exactly). Wheels stay on the road and the suspension follows halfway. It adds to
+   * explode and ride-height drop, and the body is lifted if pitching would put any of it within
+   * 4 mm of the road. Anchors follow their parts.
+   */
+  setPitch(noseDropM: number, tailRiseM: number): void;
+  /**
+   * Brake disc temperatures in degrees Celsius, front pair and rear pair. Cold discs are black
+   * carbon-carbon; from about 350 they glow dull red, orange, then yellow-white at 900 and over.
+   * The discs sit inside the wheels, so this only shows once `setWheelGhost` is above 0.
+   */
+  setBrakeTemps(frontC: number, rearC: number): void;
+  /**
+   * See-through wheels, Station 4: 0 = solid … 1 = tyres a faint dark ring and rims almost clear, so
+   * the discs and calipers inside show. The brake hardware is only drawn while this is above 0.
+   */
+  setWheelGhost(t: number): void;
   dispose(): void;
 }
 

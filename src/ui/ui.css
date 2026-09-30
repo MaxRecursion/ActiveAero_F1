@@ -175,6 +175,15 @@
 }
 .icon-btn:hover { background: var(--paper-2); }
 .icon-btn:active { background: var(--rule); }
+.ui-toolbar .sound-btn {
+  width: 42px;
+  height: 42px;
+  background: var(--drag);
+  color: var(--ink);
+}
+.ui-toolbar .sound-btn:hover { background: color-mix(in oklab, var(--drag) 82%, white); }
+.ui-toolbar .sound-btn[aria-pressed='true'] { background: var(--ink); color: var(--paper); }
+.ui-toolbar .sound-btn[aria-pressed='true']:hover { background: var(--ink-2); }
 .tip {
   position: absolute;
   top: calc(100% + 9px);
@@ -315,6 +324,7 @@
 .zone-chart {
   border-left: 1px solid var(--rule);
 }
+.zone-tow { grid-column: 2 / 4; }
 .zone-title {
   display: flex;
   align-items: baseline;
@@ -611,6 +621,61 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+.tow-gap-control {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--rule);
+}
+.tow-gap-control[hidden] { display: none !important; }
+.tow-gap-label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.tow-gap-value {
+  font: 500 14px/1 var(--font-num);
+  color: var(--ink);
+}
+.tow-gap-control input[type='range'] {
+  width: 100%;
+  margin: 3px 0 0;
+  accent-color: var(--energy);
+  cursor: ew-resize;
+}
+.tow-gap-ends {
+  display: flex;
+  justify-content: space-between;
+  font: 400 10px/1 var(--font-num);
+  color: var(--ink-3);
+}
+.tow-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 18px;
+}
+.tow-stat {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+  padding-left: 9px;
+  border-left: 2px solid var(--rule-strong);
+}
+.tow-stat--drag { border-color: var(--drag); }
+.tow-stat--down { border-color: var(--down); }
+.tow-stat--energy { border-color: var(--energy); }
+.tow-stat-value {
+  font: 500 25px/1 var(--font-num);
+  color: var(--ink);
+}
+.tow-stat-note {
+  font: 400 11px/1.25 var(--font-ui);
+  color: var(--ink-2);
 }
 .ro-grid {
   display: grid;
@@ -1030,6 +1095,7 @@
     border-left: 0;
     border-top: 1px solid var(--rule);
   }
+  .zone-tow { grid-column: auto; }
   .chart-plot { min-height: 130px; }
   /* Station 2's speed column is the tallest; its helper line lives in the caption and dialog. */
   .mode-help { display: none; }
@@ -1122,6 +1188,7 @@
   .prompt { font-size: 13px; }
   .ui-toolbar { top: 10px; right: 12px; padding: 2px; }
   .icon-btn { width: 36px; height: 36px; }
+  .ui-toolbar .sound-btn { width: 40px; height: 40px; }
 
   .ui-bottom {
     left: 0;
@@ -1189,6 +1256,7 @@
     padding: 0;
     border: 0;
   }
+  .zone-tow { grid-column: 1; }
   .zone-title { display: none; }
 
   .zone-speed { gap: 4px; }
@@ -1217,6 +1285,10 @@
   .ro-sub-2,
   .split,
   .speed-law { display: none; }
+  .tow-gap-control { margin-top: 8px; padding-top: 7px; }
+  .tow-metrics { gap: 10px 12px; padding-top: 10px; border-top: 1px solid var(--rule); }
+  .tow-stat-value { font-size: 20px; }
+  .tow-stat-note { font-size: 11px; }
 
   /* Station 2 on a phone: its one toggle joins Graph on the speed row, the mode switch loses
      its heading, readouts become a 2×2. */
@@ -1288,6 +1360,7 @@
   .prompt { display: none; }
   .ui-toolbar { top: 8px; right: 10px; padding: 2px; }
   .icon-btn { width: 32px; height: 32px; }
+  .ui-toolbar .sound-btn { width: 36px; height: 36px; }
 
   /* Caption: the head of the sheet, on the same paper, one hairline above the controls. */
   .ui-bottom { gap: 0; }

@@ -55,26 +55,44 @@ export const CLAY_SHADOW_TINT = (() => {
 
 export type Emphasis = 'none' | 'on' | 'faded';
 
+/** How a finish looks fully ghosted: its face opacity and the tone it turns to. */
+export interface GhostLook {
+  alpha: number;
+  tone: THREE.Color;
+}
+
 /**
  * X-ray: face opacity of a fully ghosted shell and the smoked-clay tone it turns to. The studio is
  * bright enough that tone mapping flattens a lighter veil, so the ghost darkens a little instead.
  */
-const GHOST_ALPHA = 0.22;
-const GHOST_TONE = new THREE.Color(0x55524c);
+const SHELL_LOOK: GhostLook = { alpha: 0.22, tone: new THREE.Color(0x55524c) };
+
+/**
+ * Wheels ghosted to show the brakes: the tyre stays a faint dark ring, the rim almost vanishes so
+ * the discs read clearly behind it.
+ */
+const TYRE_LOOK: GhostLook = { alpha: 0.36, tone: new THREE.Color(0x232427) };
+export const WHEEL_LOOKS: Partial<Record<MatKey, GhostLook>> = {
+  tyre: TYRE_LOOK,
+  tyrePlain: TYRE_LOOK,
+  rim: { alpha: 0.09, tone: new THREE.Color(PALETTE.rim) },
+  metal: { alpha: 0.14, tone: new THREE.Color(PALETTE.metal) },
+};
 
 /**
  * A see-through twin of a finish: smoked glass whose grazing faces thicken into a darker outline,
  * so the silhouette still reads while the power unit behind stays crisp. `ghost` (0–1) blends it
  * in from the plain finish; every ghost shares one program.
  */
-function createGhost(spec: Spec): THREE.MeshStandardMaterial {
+function createGhost(spec: Spec, look: GhostLook): THREE.MeshStandardMaterial {
   // Front faces only: a two-sided ghost would show the shell's far wall through its near one.
   const m = new THREE.MeshStandardMaterial({ ...spec, side: THREE.FrontSide, transparent: true });
   const amount = { value: 0 };
   m.userData.ghost = amount;
+  m.userData.ghostAlpha = look.alpha;
   m.onBeforeCompile = (shader) => {
     shader.uniforms.ghost = amount;
-    shader.uniforms.ghostTone = { value: GHOST_TONE };
+    shader.uniforms.ghostTone = { value: look.tone };
     shader.fragmentShader = shader.fragmentShader
       .replace('#include <common>', '#include <common>\nuniform float ghost;\nuniform vec3 ghostTone;')
       .replace(
@@ -96,6 +114,9 @@ export class PartMaterials {
   private readonly byKey = new Map<MatKey, THREE.MeshStandardMaterial>();
   private readonly ghosts = new Map<THREE.Material, THREE.MeshStandardMaterial>();
 
+  /** `looks` overrides how individual finishes ghost; the rest use the smoked-shell look. */
+  constructor(private readonly looks: Partial<Record<MatKey, GhostLook>> = {}) {}
+
   get(key: MatKey): THREE.MeshStandardMaterial {
     let m = this.byKey.get(key);
     if (!m) {
@@ -105,13 +126,18 @@ export class PartMaterials {
     return m;
   }
 
+  /** Whether `material` is one of this set's own finishes. */
+  owns(material: THREE.Material): boolean {
+    return [...this.byKey.values()].includes(material as THREE.MeshStandardMaterial);
+  }
+
   /** The X-ray twin of one of this set's materials (created on first use). */
   ghostOf(solid: THREE.Material): THREE.MeshStandardMaterial {
     let g = this.ghosts.get(solid);
     if (!g) {
       const key = [...this.byKey].find(([, m]) => m === solid)?.[0];
       if (!key) throw new Error('car: ghostOf() needs a material from this set');
-      g = createGhost(SPECS[key]);
+      g = createGhost(SPECS[key], this.looks[key] ?? SHELL_LOOK);
       this.ghosts.set(solid, g);
     }
     return g;
@@ -123,7 +149,7 @@ export class PartMaterials {
    */
   setGhost(t: number): void {
     for (const g of this.ghosts.values()) {
-      g.opacity = THREE.MathUtils.lerp(1, GHOST_ALPHA, t);
+      g.opacity = THREE.MathUtils.lerp(1, g.userData.ghostAlpha as number, t);
       g.depthWrite = t < 0.5;
       (g.userData.ghost as { value: number }).value = t;
     }

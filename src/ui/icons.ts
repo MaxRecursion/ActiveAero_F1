@@ -4,7 +4,7 @@
  */
 import { s } from './dom';
 
-export type IconName = 'play' | 'pause' | 'reset' | 'about' | 'close' | 'graph' | 'numbers';
+export type IconName = 'play' | 'pause' | 'reset' | 'about' | 'close' | 'graph' | 'numbers' | 'wheel' | 'replay' | 'volume' | 'volumeMuted';
 
 const STROKE = { fill: 'none', stroke: 'currentColor', 'stroke-width': 1.6, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' };
 
@@ -26,6 +26,19 @@ const PARTS: Record<IconName, () => SVGElement[]> = {
   ],
   close: () => [s('path', { d: 'M5 5l10 10M15 5L5 15', ...STROKE })],
   graph: () => [s('path', { d: 'M3.5 3.5v13h13M5.5 14.5c4 0 7-3 9.5-9', ...STROKE })],
+  // A wheel seen side-on: tyre, the brake disc inside it, and the hub.
+  wheel: () => [
+    s('circle', { cx: 10, cy: 10, r: 7.4, ...STROKE }),
+    s('circle', { cx: 10, cy: 10, r: 4.4, ...STROKE, 'stroke-dasharray': '1.6 1.9' }),
+    s('circle', { cx: 10, cy: 10, r: 1.4, fill: 'currentColor' }),
+  ],
+  replay: () => [s('path', { d: 'M4.2 10a5.8 5.8 0 1 0 1.9-4.3M4 3.6v3.6h3.6', ...STROKE })],
+  volume: () => [
+    s('path', { d: 'M3 8v4h3l4 3V5L6 8H3M13 8a3 3 0 0 1 0 4M14.5 5.5a6.5 6.5 0 0 1 0 9', ...STROKE }),
+  ],
+  volumeMuted: () => [
+    s('path', { d: 'M3 8v4h3l4 3V5L6 8H3M13 8l4 4M17 8l-4 4', ...STROKE }),
+  ],
   // A spec-sheet table: header rule and a column rule.
   numbers: () => [
     s('rect', { x: 3.5, y: 4, width: 13, height: 12, rx: 1.2, ...STROKE }),

@@ -9,8 +9,11 @@ import { ceilingSpeedKmh } from '../physics/aero';
 import { BRAKE_RESERVE_J, CLIP_SECONDS_PER_LAP, simulateLap } from '../physics/lap';
 import { motorTaper, topSpeedKmh, type MotorTaper } from '../physics/powertrain';
 import { CIRCUIT_NAME } from '../physics/track';
+import { TOW_MODEL } from '../physics/tow';
 import { SLOW_MOTION_FACTOR } from '../scene/motion';
 import type { StationId, StationMeta } from './types';
+import { assumptionsTable, formula, list, p, para, pct, row, section, sourced, tag } from './aboutParts';
+import { brakingSections } from './aboutBraking';
 import { h } from './dom';
 import { fmtKmh, fmtKmhAtLeast, fmtLimit, fmtMJ, fmtS } from './format';
 import { icon } from './icons';
@@ -28,50 +31,6 @@ const DISCLAIMER =
   'UNSEEN is an independent fan project. It is unofficial and is not affiliated with, endorsed by or associated in any way with the Formula 1 companies, the FIA or any team. ' +
   'F1, FORMULA ONE, FORMULA 1, FIA FORMULA ONE WORLD CHAMPIONSHIP, GRAND PRIX and related marks are trade marks of ' +
   "Formula One Licensing B.V. No team's car is depicted: the body is a concept design, and the power unit and cockpit inside it are simplified stand-ins.";
-
-type Kind = 'estimate' | 'reg' | 'phys' | 'result';
-
-function section(n: string, title: string, body: Node[]): HTMLElement {
-  return h('section', 'about-sec', [
-    h('h3', 'about-h', [h('span', { class: 'idx', text: n }), title]),
-    ...body,
-  ]);
-}
-
-const p = (text: string, cls = '') => h('p', { class: cls, text });
-
-/** A run of text with coloured key words, e.g. "blue arrows" in the downforce colour. */
-function para(parts: (string | [string, string])[]): HTMLElement {
-  return h('p', {}, parts.map((x) => (typeof x === 'string' ? x : h('span', { class: `tone-${x[0]}`, text: x[1] }))));
-}
-
-function tag(kind: Kind, text: string): HTMLElement {
-  return h('span', { class: `src-tag src-tag--${kind}`, text });
-}
-
-const formula = (lhs: string, rhs: string, note: string) =>
-  h('div', 'formula-row', [h('span', { class: 'formula', text: `${lhs} = ${rhs}` }), h('span', { class: 'formula-note', text: note })]);
-
-const row = (quantity: string, value: string, source: HTMLElement) =>
-  h('tr', {}, [h('th', { text: quantity, attrs: { scope: 'row' } }), h('td', { class: 'num', text: value }), h('td', {}, [source])]);
-
-function assumptionsTable(rows: HTMLElement[]): HTMLElement {
-  return h('div', 'table-wrap', [
-    h('table', 'assumptions', [
-      h('thead', {}, [
-        h('tr', {}, [
-          h('th', { text: 'Quantity', attrs: { scope: 'col' } }),
-          h('th', { text: 'Value', attrs: { scope: 'col' } }),
-          h('th', { text: 'Source', attrs: { scope: 'col' } }),
-        ]),
-      ]),
-      h('tbody', {}, rows),
-    ]),
-  ]);
-}
-
-const list = (items: string[]) => h('ul', 'about-list', items.map((text) => h('li', { text })));
-const pct = (x: number) => Math.round(x * 100);
 
 /** Station 1 — force from speed. */
 function downforceSections(): HTMLElement[] {
@@ -189,10 +148,6 @@ function activeAeroSections(): HTMLElement[] {
   ];
 }
 
-/** A list item with a source link at its end. */
-const sourced = (text: string, src: { label: string; url: string }) =>
-  h('li', {}, [`${text} `, h('a', { class: 'about-cite', text: src.label, attrs: { href: src.url, target: '_blank', rel: 'noopener' } })]);
-
 /**
  * Station 3 — energy over a lap. Its figures come from running the lap simulation (on and off
  * super clipping), so this group is built the first time the dialog opens, not at start-up.
@@ -268,10 +223,38 @@ function energySections(): HTMLElement[] {
   ];
 }
 
+/** Station 05 — the straight-line benefit and grip cost of following in a wake. */
+function towSections(): HTMLElement[] {
+  return [
+    section('13', "What you're seeing", [
+      p('The following car sits in the lead car’s wake. Close the gap to increase the estimated drag reduction, while the same disturbed air reduces the follower’s downforce.'),
+      p('The gap is measured from the lead car’s rear to the following car’s nose. The shared speed control sets both cars’ speed.'),
+    ]),
+    section('14', 'The model', [
+      h('div', 'formulas formulas--stacked', [
+        formula('wake', `exp(−gap / ${TOW_MODEL.wakeDecayM} m)`, 'estimated wake strength at the follower'),
+        formula('drag saved', `D · ${TOW_MODEL.maxDragReduction * 100}% · wake`, 'estimated reduction from the lead car’s drag'),
+        formula('downforce lost', `L · ${TOW_MODEL.maxDownforceLoss * 100}% · wake`, 'estimated reduction in the follower’s downforce'),
+        formula('power saved', 'drag saved · speed', 'power the follower no longer spends against drag'),
+      ]),
+      p('The estimates decay exponentially with gap. They show the straight-line benefit and grip tradeoff, not a predicted lap-time gain.'),
+    ]),
+    section('15', 'What is simplified', [
+      p('This is an illustrative model, not CFD or a team simulation. It assumes both cars stay aligned and at the same speed. It does not model lateral offset, yaw, wind, tyre temperatures, or how the wake changes around the circuit.'),
+    ]),
+  ];
+}
+
 export function createAbout(stations: StationMeta[]): AboutDialog {
-  const bodies: Record<StationId, () => HTMLElement[]> = { downforce: downforceSections, activeAero: activeAeroSections, energy: energySections };
+  const bodies: Record<StationId, () => HTMLElement[]> = {
+    downforce: downforceSections,
+    activeAero: activeAeroSections,
+    energy: energySections,
+    braking: brakingSections,
+    tow: towSections,
+  };
   /** Groups whose content is expensive (it runs a simulation) are filled on first open. */
-  const LAZY = new Set<StationId>(['energy']);
+  const LAZY = new Set<StationId>(['energy', 'tow']);
   const groups = new Map<StationId, HTMLElement>();
   const pending = new Map<StationId, HTMLElement>();
   const groupEls = stations.map((m) => {
@@ -288,7 +271,7 @@ export function createAbout(stations: StationMeta[]): AboutDialog {
     pending.clear();
   };
 
-  const sources = section('13', 'Sources', [
+  const sources = section('17', 'Sources', [
     h(
       'ul',
       'about-list about-sources',
@@ -297,7 +280,7 @@ export function createAbout(stations: StationMeta[]): AboutDialog {
   ]);
 
   const link = (text: string, href: string) => h('a', { text, attrs: { href, target: '_blank', rel: 'noopener' } });
-  const credits = section('14', 'Credits', [
+  const credits = section('18', 'Credits', [
     h('p', 'about-credit', [
       'This work is based on “',
       link('F1 2026 concept (polygon model)', 'https://sketchfab.com/3d-models/f1-2026-concept-polygon-model-ea3bde709b1e4dc9b0ec8557d106ed42'),
@@ -314,13 +297,15 @@ export function createAbout(stations: StationMeta[]): AboutDialog {
       h('span', 'keys', keys.flatMap((k, i) => [i ? h('span', { class: 'key-or', text: 'or' }) : null, h('kbd', { text: k })])),
       h('span', { text: what }),
     ]);
-  const shortcuts = section('15', 'Keyboard', [
+  const shortcuts = section('19', 'Keyboard', [
     h('div', 'keys-grid', [
       key(stations.map((_, i) => String(i + 1)), 'Switch station'),
-      key(['Space'], 'Play / pause the speed sweep or the lap'),
+      key(['Space'], 'Play / pause the speed sweep or the lap; Brake in station 04'),
       key(['←', '→'], 'Change speed (on the slider)'),
       key(['←', '→'], 'Step along the lap, 1 s — Shift: 5 s (on the timeline)'),
+      key(['←', '→'], 'Step along the stop, 0.1 s — Shift: 0.5 s (on the chart)'),
       key(['X'], 'X-ray: see through the bodywork (station 03)'),
+      key(['W'], 'See-through wheels (station 04)'),
       key(['S'], 'Super clipping on / off (station 03)'),
       key(['M'], 'Corner / Straight Mode (station 02)'),
       key(['A'], 'Airflow lines on / off'),

@@ -8,11 +8,14 @@ import { SPEED_RANGE_KMH } from '../physics/constants';
 import type { CarModel } from '../scene/car/types';
 import { prefersReducedMotion, type Stage } from '../scene/stage';
 import { ACTIVE_AERO_CONFIG, createActiveAeroStation } from '../stations/activeAero/station';
+import { BRAKING_CONFIG, createBrakingStation } from '../stations/braking/station';
 import { createDownforceStation, DOWNFORCE_CONFIG } from '../stations/downforce/station';
 import { createEnergyStation, ENERGY_CONFIG } from '../stations/energy/station';
+import { createTowStation, TOW_CONFIG } from '../stations/tow/station';
 import type { Station, StationFactory } from '../stations/types';
 import { createUI } from '../ui/createUI';
 import type { StationId, StationUIConfig } from '../ui/types';
+import { createEngineSound } from './engineSound';
 import { createGarage, easeInOut } from './garage';
 
 /** Tab order. */
@@ -20,11 +23,15 @@ const STATIONS: { config: StationUIConfig; create: StationFactory }[] = [
   { config: DOWNFORCE_CONFIG, create: createDownforceStation },
   { config: ACTIVE_AERO_CONFIG, create: createActiveAeroStation },
   { config: ENERGY_CONFIG, create: createEnergyStation },
+  { config: BRAKING_CONFIG, create: createBrakingStation },
+  { config: TOW_CONFIG, create: createTowStation },
 ];
 const ROUTES: Record<StationId, string> = {
   downforce: '#/downforce',
   activeAero: '#/active-aero',
   energy: '#/energy',
+  braking: '#/braking',
+  tow: '#/tow',
 };
 const SWEEP_SECONDS = 4.5;
 const INTRO_SECONDS = 3.2;
@@ -38,6 +45,7 @@ function stationFromHash(): StationId | null {
 export function startApp(stage: Stage, uiRoot: HTMLElement, car: CarModel) {
   const reducedMotion = prefersReducedMotion();
   const garage = createGarage(stage, car);
+  const engineSound = createEngineSound();
 
   const speed = { target: 0, kmh: 0 };
   let sweep: null | { t: number; loop: boolean; from: number; to: number; duration: number } = null;
@@ -54,10 +62,12 @@ export function startApp(stage: Stage, uiRoot: HTMLElement, car: CarModel) {
         stopSweep();
         speed.target = kmh;
       },
+      onTowGapInput: (gapM) => active?.onTowGap?.(gapM),
       onToggle(id, on) {
         active?.onToggle?.(id, on);
         syncAirflowAvailability();
       },
+      onSoundToggle: (muted) => engineSound.setMuted(muted),
       onAeroMode: (mode) => active?.onAeroMode?.(mode),
       onPlayToggle() {
         if (active?.onPlayToggle) active.onPlayToggle();
@@ -148,6 +158,8 @@ export function startApp(stage: Stage, uiRoot: HTMLElement, car: CarModel) {
 
   const onHash = () => switchTo(stationFromHash() ?? 'downforce');
   window.addEventListener('hashchange', onHash);
+  window.addEventListener('pointerdown', engineSound.unlock);
+  window.addEventListener('keydown', engineSound.unlock);
 
   // ── layout: keep the car centred in the part of the screen the UI leaves free ──
   const syncInsets = () => stage.setInsets(ui.getInsets());
@@ -158,6 +170,7 @@ export function startApp(stage: Stage, uiRoot: HTMLElement, car: CarModel) {
     stepSweep(dt);
     if (!sweep) speed.kmh = THREE.MathUtils.damp(speed.kmh, speed.target, 7, dt);
     if (Math.abs(speed.kmh - speed.target) < 0.05) speed.kmh = speed.target;
+    engineSound.setSpeed(speed.kmh);
     active?.frame(dt, speed.kmh);
     const own = active?.currentKmh?.();
     if (own !== undefined) speed.target = speed.kmh = own;
@@ -184,6 +197,9 @@ export function startApp(stage: Stage, uiRoot: HTMLElement, car: CarModel) {
     dispose() {
       offFrame();
       window.removeEventListener('hashchange', onHash);
+      window.removeEventListener('pointerdown', engineSound.unlock);
+      window.removeEventListener('keydown', engineSound.unlock);
+      engineSound.dispose();
       active?.exit();
       ui.dispose();
       garage.dispose();

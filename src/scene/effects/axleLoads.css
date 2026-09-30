@@ -1,0 +1,15 @@
+/*
+ * Axle-load tags reuse the force tags (forces.css) and add the change against the outline:
+ * a small signed figure after the load, in the heat colour when the load grew.
+ */
+.fx-delta {
+  font: 500 10.5px/1 var(--font-num);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink-3);
+}
+
+.fx-delta[data-sign='+'] {
+  color: var(--heat);
+}

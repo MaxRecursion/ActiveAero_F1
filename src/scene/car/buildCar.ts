@@ -69,8 +69,8 @@ export function buildCar(): CarModel {
     ['wheelRL', 'Rear-left wheel', 'rear', -1],
     ['wheelRR', 'Rear-right wheel', 'rear', 1],
   ];
-  for (const [id, label, axle, side] of wheels) {
-    add(
+  for (const [i, [id, label, axle, side]] of wheels.entries()) {
+    const wheel = add(
       id,
       label,
       'wheels',
@@ -82,6 +82,7 @@ export function buildCar(): CarModel {
       },
       { dropShare: 0 },
     );
+    car.brakes.mount(wheel, spinners[i], spinners[i].position, axle, side);
   }
 
   const halves: [THREE.Group, 1 | -1][] = [];

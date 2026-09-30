@@ -41,6 +41,8 @@ export interface SpeedControl {
   setMarkers(defs: MarkerDef[]): ScaleMarker[];
   /** One line of fine print under the presets (empty hides it). */
   setNote(text: string): void;
+  /** Rename the control ("Speed", "Brake from") for the heading and assistive tech. */
+  setLabel(text: string): void;
   /** Per-frame: readout and current preset. */
   render(speedKmh: number): void;
   dispose(): void;
@@ -94,8 +96,9 @@ export function createSpeedControl(opts: SpeedControlOptions): SpeedControl {
   let presetButtons: { kmh: number; el: HTMLButtonElement; current: boolean }[] = [];
   const note = h('p', 'speed-law');
 
+  const title = h('span', { text: 'Speed' });
   const el = h('section', { class: 'zone zone-speed', attrs: { 'aria-label': 'Speed' } }, [
-    h('h2', 'micro zone-title', [h('span', { class: 'idx', text: 'A' }), 'Speed']),
+    h('h2', 'micro zone-title', [h('span', { class: 'idx', text: 'A' }), title]),
     readout,
     scale,
     presets,
@@ -176,6 +179,11 @@ export function createSpeedControl(opts: SpeedControlOptions): SpeedControl {
     setNote(text) {
       setNoteText(text);
       note.hidden = !text;
+    },
+    setLabel(text) {
+      title.textContent = text;
+      el.setAttribute('aria-label', text);
+      input.setAttribute('aria-label', text);
     },
     render(speedKmh) {
       setNum(fmtKmh(speedKmh));

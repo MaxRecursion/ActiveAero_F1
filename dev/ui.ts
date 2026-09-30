@@ -10,6 +10,9 @@
  * Station 3 (energy): ?t= seconds into the lap  ?clip=0|1 (super clipping, default 1)  ?playing=0|1 (default 1:
  * the page plays the lap itself)  ?rate=0.5|1|2  ?xray=0|1 (default 1). The lap is built the way the app builds it:
  * every 5th sample of simulateLap() for the map and the trace.
+ * Station 4 (braking): ?speed= is the brake-from speed  ?state=ready|mid|done (mid = 40% of the way through the
+ * stop)  ?t= seconds into the stop  ?playing=0|1 (default 0: parked where the state puts it)  ?rate=0.25|0.5|1
+ * ?brakes=0|1 (see-through wheels, default 1). The views come from the station's own trace and caption code.
  */
 import * as THREE from 'three';
 import { createHarness, num, params } from './harness';
@@ -18,14 +21,20 @@ import { ESTIMATES, PHYS, REGS, SPEED_RANGE_KMH } from '../src/physics/constants
 import { sampleAt, simulateLap, type LapPhase, type LapResult } from '../src/physics/lap';
 import { availablePowerW, mguKLimitKw, requiredPowerW, topSpeedKmh } from '../src/physics/powertrain';
 import { CIRCUIT_NAME } from '../src/physics/track';
+import { BRAKE_DIVE_EXAGGERATION } from '../src/app/garage';
+import { captionFor, phaseOf } from '../src/stations/braking/content';
+import { BRAKE_FROM_KMH, BRAKING_CONFIG, DEFAULT_RATE, RATES } from '../src/stations/braking/station';
+import { makeBrakeRun, viewAt } from '../src/stations/braking/trace';
 import { createUI } from '../src/ui/createUI';
 import type {
   AeroMode,
+  BrakeState,
   CaptionRun,
   LapTrace,
   Station1View,
   Station2View,
   Station3View,
+  Station4View,
   StationId,
   StationUIConfig,
   StationView,
@@ -72,6 +81,7 @@ const STATIONS: StationUIConfig[] = [
     toggles: ['xray', 'clipping', 'airflow'],
     conditions: `${CIRCUIT_NAME} · ${REGS.minMassKg.value} kg · engine ${ESTIMATES.iceKw} kW est. · motor ≤ ${REGS.mguKMaxKw.value} kW · battery window ${REGS.energyStoreWindowMJ.value} MJ · recovery ≤ ${REGS.harvestPerLapMJ.value} MJ/lap · grip μ ${ESTIMATES.gripLateral}/${ESTIMATES.gripLongitudinal} est.`,
   },
+  BRAKING_CONFIG,
 ];
 
 const toggles: Record<ToggleId, boolean> = {
@@ -80,17 +90,21 @@ const toggles: Record<ToggleId, boolean> = {
   ceiling: params.get('ceiling') !== null && params.get('ceiling') !== 'off',
   xray: params.get('xray') !== '0',
   clipping: params.get('clip') !== '0',
+  brakes: params.get('brakes') !== '0',
 };
 const stationParam = params.get('station');
-let station: StationId = stationParam === 'activeAero' || stationParam === 'energy' ? stationParam : 'downforce';
-let speed = num('speed', 300);
+type HarnessStationId = Exclude<StationId, 'tow'>;
+let station: HarnessStationId = STATIONS.find((c) => c.meta.id === stationParam)?.meta.id as HarnessStationId ?? 'downforce';
+const clampBrakeFrom = (kmh: number) => Math.min(BRAKE_FROM_KMH.max, Math.max(BRAKE_FROM_KMH.min, Math.round(kmh)));
+let speed = station === 'braking' ? clampBrakeFrom(num('speed', 300)) : num('speed', 300);
 let mode: AeroMode = params.get('mode') === 'straight' ? 'straight' : 'corner';
 /** ?t is the flap position on Stations 1–2 and seconds into the lap on Station 3. */
-const flapParam = station !== 'energy' && params.has('t');
+const flapParam = (station === 'downforce' || station === 'activeAero') && params.has('t');
 let straightT = flapParam ? num('t', 0) : mode === 'straight' ? 1 : 0;
 let playing = params.has('playing') ? params.get('playing') === '1' : station === 'energy';
 let lapT = station === 'energy' ? num('t', 0) : 0;
 let lapRate = [0.5, 1, 2].includes(num('rate', 1)) ? num('rate', 1) : 1;
+let brakeRate = RATES.includes(num('rate', DEFAULT_RATE)) ? num('rate', DEFAULT_RATE) : DEFAULT_RATE;
 const tops = { corner: topSpeedKmh(0), straight: topSpeedKmh(1) };
 
 /** Band captions in the station's style: short "why" sentences, no live numbers. */
@@ -251,12 +265,69 @@ function view3(): Station3View {
   };
 }
 
-const view = (): StationView =>
-  station === 'downforce' ? { station, view: view1() } : station === 'activeAero' ? { station, view: view2() } : { station, view: view3() };
+// ── Station 4: one stop, parked or played the way the station does ───────────────────
+let run = makeBrakeRun(speed);
+let brakeState: BrakeState = 'ready';
+let brakeT = 0;
+const stateParam = params.get('state');
+if (station === 'braking' && (stateParam === 'mid' || stateParam === 'done' || params.has('t'))) {
+  const done = stateParam === 'done';
+  brakeState = done ? 'done' : 'braking';
+  brakeT = Math.min(run.zone.timeS, Math.max(0, num('t', done ? run.zone.timeS : 0.4 * run.zone.timeS)));
+}
+let captionKey = '';
+let brakeCaption: CaptionRun[] = [];
 
-/** X-ray stand-in: the clay block turns see-through. */
+function view4(): Station4View {
+  const m = brakeState === 'ready' ? run.cruise : viewAt(run.zone, brakeT);
+  const paused = brakeState === 'braking' && !playing;
+  const phase = phaseOf(brakeState, run.trace, m.kmh);
+  const shownPause = paused && (phase === 'early' || phase === 'mid' || phase === 'late');
+  const key = `${run.trace.fromKmh}|${phase}|${shownPause}`;
+  if (key !== captionKey) {
+    captionKey = key;
+    brakeCaption = captionFor({ phase, paused: shownPause, zone: run.trace, transferN: viewAt(run.zone, 0).transferN, diveExaggeration: BRAKE_DIVE_EXAGGERATION });
+  }
+  return {
+    zone: run.trace,
+    state: brakeState,
+    tS: m.tS,
+    sM: m.sM,
+    kmh: m.kmh,
+    decelG: m.decelG,
+    brakeKw: m.brakeKw,
+    harvestKw: m.harvestKw,
+    heatKw: m.heatKw,
+    frontLoadN: m.frontLoadN,
+    rearLoadN: m.rearLoadN,
+    frontStaticN: m.frontStaticN,
+    rearStaticN: m.rearStaticN,
+    transferN: m.transferN,
+    frontBiasPct: m.frontBiasPct,
+    noseDropMm: m.noseDropMm,
+    diveExaggeration: BRAKE_DIVE_EXAGGERATION,
+    frontDiscC: m.frontDiscC,
+    rearDiscC: m.rearDiscC,
+    harvestedMJ: m.harvestedMJ,
+    heatMJ: m.heatMJ,
+    playing,
+    rate: brakeRate,
+    caption: brakeCaption,
+  };
+}
+
+const view = (): StationView =>
+  station === 'downforce'
+    ? { station, view: view1() }
+    : station === 'activeAero'
+      ? { station, view: view2() }
+      : station === 'energy'
+        ? { station, view: view3() }
+        : { station, view: view4() };
+
+/** X-ray and see-through-wheels stand-in: the clay block turns see-through. */
 function applyXray() {
-  const on = station === 'energy' && toggles.xray;
+  const on = (station === 'energy' && toggles.xray) || (station === 'braking' && toggles.brakes);
   clay.transparent = on;
   clay.opacity = on ? 0.35 : 1;
   clay.depthWrite = !on;
@@ -273,6 +344,12 @@ const ui = createUI({
       speed = kmh;
       playing = false;
       ui.setPlaying(false);
+      if (station === 'braking') {
+        speed = clampBrakeFrom(kmh);
+        run = makeBrakeRun(speed);
+        brakeState = 'ready';
+        brakeT = 0;
+      }
     },
     onToggle(id, on) {
       toggles[id] = on;
@@ -283,26 +360,58 @@ const ui = createUI({
         lapT = (lapT / before) * lapFor(on).result.lapTimeS;
       }
     },
+    onTowGapInput() {},
+    onSoundToggle() {},
     onPlayToggle() {
-      playing = !playing;
+      if (station === 'braking') {
+        if (brakeState !== 'braking') {
+          brakeState = 'braking';
+          brakeT = 0;
+          playing = true;
+        } else {
+          playing = !playing;
+        }
+      } else {
+        playing = !playing;
+      }
       ui.setPlaying(playing);
     },
     onResetView() {
       void stage.goTo('hero');
     },
     onStationChange(id) {
+      if (id === 'tow') return;
       station = id;
       ui.setStation(id);
+      if (id === 'braking') {
+        speed = speed < 200 ? 300 : clampBrakeFrom(speed);
+        run = makeBrakeRun(speed);
+        brakeState = 'ready';
+        brakeT = 0;
+        playing = false;
+        toggles.brakes = true;
+        ui.setToggle('brakes', true);
+        ui.setSpeedControl(speed);
+        ui.setPlaying(false);
+      }
       applyXray();
     },
     onAeroMode(next) {
       mode = next;
     },
     onLapScrub(tS) {
+      if (station === 'braking') {
+        brakeT = Math.min(Math.max(0, tS), run.zone.timeS);
+        brakeState = tS <= 0 ? 'ready' : tS >= run.zone.timeS ? 'done' : 'braking';
+        playing = false;
+        ui.setPlaying(false);
+        return;
+      }
       lapT = Math.min(Math.max(0, tS), lapFor(toggles.clipping).result.lapTimeS);
     },
     onLapRate(rate) {
-      lapRate = rate;
+      if (station === 'braking') brakeRate = rate;
+      else lapRate = rate;
     },
   },
 });
@@ -323,6 +432,14 @@ stage.onFrame((dt) => {
   if (playing && station === 'energy') {
     const lapTime = lapFor(toggles.clipping).result.lapTimeS;
     lapT = (lapT + dt * lapRate) % lapTime;
+  } else if (playing && station === 'braking') {
+    brakeT += dt * brakeRate;
+    if (brakeT >= run.zone.timeS) {
+      brakeT = run.zone.timeS;
+      brakeState = 'done';
+      playing = false;
+      ui.setPlaying(false);
+    }
   } else if (playing) {
     sweepT += dt;
     speed = SPEED_RANGE_KMH.max * (0.5 - 0.5 * Math.cos(sweepT * 0.5));
