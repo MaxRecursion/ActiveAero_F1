@@ -17,6 +17,7 @@
  */
 import * as THREE from 'three';
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
+import { PALETTE } from '../palette';
 
 export interface FlowMaterialOptions {
   linewidth: number;
@@ -65,6 +66,8 @@ export function createFlowMaterial(opts: FlowMaterialOptions): LineMaterial {
       attribute vec3 instanceOpenColorStart;
       attribute vec3 instanceOpenColorEnd;
       uniform float activeAero;
+      uniform float flowSlowdown;
+      uniform vec3 stillFlowColor;
       varying float vFade;`,
     ),
     'void main() {',
@@ -82,7 +85,8 @@ export function createFlowMaterial(opts: FlowMaterialOptions): LineMaterial {
       'vColor.xyz = ( position.y < 0.5 ) ? instanceColorStart : instanceColorEnd;',
       `vColor.xyz = ( position.y < 0.5 )
         ? mix( instanceColorStart, instanceOpenColorStart, activeAero )
-        : mix( instanceColorEnd, instanceOpenColorEnd, activeAero );`,
+        : mix( instanceColorEnd, instanceOpenColorEnd, activeAero );
+        vColor.xyz = mix( vColor.xyz, stillFlowColor, flowSlowdown );`,
     ],
     [
       'vec4 start = modelViewMatrix * vec4( instanceStart, 1.0 );',
@@ -102,6 +106,8 @@ export function createFlowMaterial(opts: FlowMaterialOptions): LineMaterial {
     ],
   ].reduce((src, [find, replace]) => patch(src, find, replace), material.vertexShader);
   material.uniforms.activeAero = { value: 0 };
+  material.uniforms.flowSlowdown = { value: 0 };
+  material.uniforms.stillFlowColor = { value: new THREE.Color(PALETTE.background) };
 
   material.fragmentShader = patch(
     patch(material.fragmentShader, 'uniform float opacity;', 'uniform float opacity;\nvarying float vFade;'),

@@ -104,7 +104,7 @@ export interface Garage {
   setBraking(scene: BrakingScene | null): void;
   setHighlight(ids: readonly PartId[] | null): void;
   /** Add a following car and its illustrative wake; null hides both. */
-  setTow(gapM: number | null): void;
+  setTow(gapM: number | null, wakeStrength?: number): void;
   /** Once per frame, after the station has worked out the aero state for this speed. */
   update(dt: number, kmh: number, aero: AeroState): void;
   dispose(): void;
@@ -114,6 +114,9 @@ export function createGarage(stage: Stage, car: CarModel): Garage {
   const reducedMotion = prefersReducedMotion();
   const tunnel = createWindTunnel();
   const airflow = createAirflow({ car });
+  const towAirflow = createAirflow({ car });
+  towAirflow.root.name = 'tow-airflow';
+  towAirflow.root.visible = false;
   const forces = createForceArrows({ car, metresPerNewton: METRES_PER_NEWTON, formatForce: fmtKN });
   // Routes are traced from the assembled car, so this must come before any explode.
   const energy = createEnergyFlow({ car });
@@ -132,7 +135,7 @@ export function createGarage(stage: Stage, car: CarModel): Garage {
   towWake.rotation.z = -Math.PI / 2;
   towWake.scale.set(0.55, 0, 1.7);
   towWake.visible = false;
-  rig.add(tunnel.road, car.root, airflow.root, energy.root, axleLoads.root, towWake, towCar);
+  rig.add(tunnel.road, car.root, airflow.root, energy.root, axleLoads.root, towWake, towCar, towAirflow.root);
   stage.scene.add(tunnel.studio, rig, forces.root);
 
   // Compile the ghost shader, the brake hardware and the axle-load arrows now rather than on the
@@ -282,6 +285,11 @@ export function createGarage(stage: Stage, car: CarModel): Garage {
     airflow.setSpeed(kmh);
     airflow.setOpacity(s.flowAlpha);
     airflow.update(dt);
+    if (towCar.visible) {
+      towAirflow.setSpeed(kmh);
+      towAirflow.setActiveAero(s.straightT);
+      towAirflow.update(dt);
+    }
 
     const byId = Object.fromEntries(aero.surfaces.map((x) => [x.id, x.downforceN]));
     forces.setForces({
@@ -331,15 +339,19 @@ export function createGarage(stage: Stage, car: CarModel): Garage {
     setEnergy: (flows) => energy.setFlows(flows),
     setBraking: (scene) => void (target.braking = scene),
     setHighlight: (ids) => car.setHighlight(ids),
-    setTow(gapM) {
+    setTow(gapM, wakeStrength = 0) {
       if (gapM === null) {
         towCar.visible = false;
         towWake.visible = false;
+        towAirflow.root.visible = false;
         return;
       }
-      const gap = Math.max(1, gapM);
+      const gap = Math.max(2, gapM);
       towCar.position.set(-5.3 - gap, 0, 0);
       towCar.visible = true;
+      towAirflow.root.position.x = towCar.position.x;
+      towAirflow.root.visible = true;
+      towAirflow.setSlipstream(wakeStrength);
       towWake.position.set(-2.55 - gap / 2, 1.1, 0);
       towWake.scale.y = gap / 2;
       towWake.visible = true;
@@ -349,6 +361,7 @@ export function createGarage(stage: Stage, car: CarModel): Garage {
       axleLoads.dispose();
       energy.dispose();
       forces.dispose();
+      towAirflow.dispose();
       airflow.dispose();
       tunnel.dispose();
       towWake.geometry.dispose();

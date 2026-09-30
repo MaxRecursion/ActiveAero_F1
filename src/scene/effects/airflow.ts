@@ -102,6 +102,7 @@ export function createAirflow(opts: AirflowOptions): Airflow {
   let kmh = 0;
   let alpha = 1;
   let offset = 0;
+  let slipstream = 0;
 
   return {
     root,
@@ -115,12 +116,16 @@ export function createAirflow(opts: AirflowOptions): Airflow {
       const k = THREE.MathUtils.clamp(t, 0, 1);
       for (const m of materials) m.uniforms.activeAero.value = k;
     },
+    setSlipstream(strength) {
+      slipstream = THREE.MathUtils.clamp(strength, 0, 1);
+      for (const m of materials) m.uniforms.flowSlowdown.value = slipstream * 0.3;
+    },
     update(dt) {
-      const opacity = THREE.MathUtils.smoothstep(kmh, 0, FULL_OPACITY_KMH) * alpha;
+      const opacity = THREE.MathUtils.smoothstep(kmh, 0, FULL_OPACITY_KMH) * alpha * (1 - slipstream * 0.12);
       root.visible = opacity > 0.002;
       if (!root.visible) return;
       // Dashes travel toward -X; wrapping by the dash period keeps the offset small and exact.
-      if (!reducedMotion) offset = (offset - visualSpeed(kmh) * dt) % PERIOD;
+      if (!reducedMotion) offset = (offset - visualSpeed(kmh) * (1 - slipstream * 0.3) * dt) % PERIOD;
       for (const m of materials) m.dashOffset = offset;
       material.opacity = opacity;
       xrayMaterial.opacity = opacity * XRAY_OPACITY;

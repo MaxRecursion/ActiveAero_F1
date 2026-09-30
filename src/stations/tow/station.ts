@@ -6,7 +6,7 @@ import type { Station5View, StationUIConfig } from '../../ui/types';
 import type { Station, StationContext } from '../types';
 import { PRESETS } from '../downforce/content';
 
-const MIN_GAP_M = 1;
+const MIN_GAP_M = 2;
 const MAX_GAP_M = 12;
 const DEFAULT_GAP_M = 6;
 const CAR_LENGTH_M = 5.3;
@@ -51,7 +51,7 @@ export function createTowStation({ stage, garage, ui }: StationContext): Station
       stage.controls.maxDistance = 36;
       garage.setExploded(false);
       garage.setCeiling(false);
-      garage.setAirflow(false);
+      garage.setAirflow(true);
       garage.setAeroMode('corner');
       garage.setWeightArrow(false);
       garage.setForceArrows(false);
@@ -69,6 +69,7 @@ export function createTowStation({ stage, garage, ui }: StationContext): Station
     onTowGap: setGap,
     frame(dt, kmh) {
       const wake = towState(kmh, gapM);
+      garage.setTow(gapM, wake.wakeStrength);
       garage.update(dt, kmh, aeroState(kmh));
       const view: Station5View = {
         ...wake,

@@ -65,6 +65,8 @@ export interface Airflow {
    * turn the air less: weaker upwash behind the front and rear wings and a lower, flatter wake.
    */
   setActiveAero(t: number): void;
+  /** 0–1 wake strength: slower and less vivid streamlines for a following car. */
+  setSlipstream(strength: number): void;
   update(dt: number): void;
   dispose(): void;
 }

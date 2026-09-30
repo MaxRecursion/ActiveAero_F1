@@ -25,7 +25,7 @@ export function createTowReadouts(onGapInput: (gapM: number) => void): TowReadou
     attrs: {
       id: 'tow-gap-input',
       type: 'range',
-      min: '1',
+      min: '2',
       max: '12',
       step: '0.5',
       value: '6',
@@ -35,7 +35,7 @@ export function createTowReadouts(onGapInput: (gapM: number) => void): TowReadou
   const control = h('div', 'tow-gap-control', [
     h('label', { class: 'tow-gap-label', attrs: { for: 'tow-gap-input' } }, [h('span', 'micro', ['Following gap']), gapValue]),
     gapInput,
-    h('div', { class: 'tow-gap-ends', attrs: { 'aria-hidden': 'true' } }, [h('span', { text: '1 m' }), h('span', { text: '12 m' })]),
+    h('div', { class: 'tow-gap-ends', attrs: { 'aria-hidden': 'true' } }, [h('span', { text: '2 m' }), h('span', { text: '12 m' })]),
   ]);
 
   const drag = stat('Drag saved', 'drag');
