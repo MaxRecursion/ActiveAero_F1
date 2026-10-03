@@ -4,13 +4,13 @@
  * this file only picks, thins and renames.
  */
 import { brakingState, sampleAt, simulateBrakeZone, type BrakeSample, type BrakeZone } from '../../physics/braking';
+import { ESTIMATES } from '../../physics/constants';
 import type { BrakePoint, BrakeTrace, Station4View } from '../../ui/types';
 
 /** The physics steps every 5 ms; one chart point per 25 ms is plenty for a 3 s stop. */
 const POINT_EVERY = 5;
 
-/** The range carbon-carbon discs are reported to work best in. The physics module does not carry it. */
-export const DISC_WINDOW_C = { min: 350, max: 550 } as const;
+export const DISC_WINDOW_C = ESTIMATES.brakes.workingWindowC;
 
 const toPoint = (x: BrakeSample): BrakePoint => ({
   t: x.t,

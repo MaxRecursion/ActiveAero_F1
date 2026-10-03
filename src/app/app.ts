@@ -98,16 +98,17 @@ export function startApp(stage: Stage, uiRoot: HTMLElement, car: CarModel) {
   }
 
   // ── speed sweep ────────────────────────────────────────────────────────────────
+  /** A looping sweep needs the station's sweep range; a one-off ease to `to` (an intro) does not. */
   function startSweep(loop: boolean, to?: number) {
-    if (!active?.sweep) return;
-    const { from: lo, to: hi } = active.sweep;
+    const range = active?.sweep;
     const from = speed.kmh;
-    const mid = (lo + hi) / 2;
+    const end = to ?? (range && (from > (range.from + range.to) / 2 ? range.from : range.to));
+    if (end === undefined) return;
     sweep = {
       t: 0,
       loop,
       from,
-      to: to ?? (from > mid ? lo : hi),
+      to: end,
       duration: loop ? SWEEP_SECONDS : INTRO_SECONDS,
     };
     ui.setPlaying(loop);

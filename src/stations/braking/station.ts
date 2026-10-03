@@ -20,8 +20,11 @@ import type { Station, StationContext } from '../types';
 import { captionFor, phaseOf, PRESETS, type BrakePhase } from './content';
 import { makeBrakeRun, viewAt, type BrakeMoment, type BrakeRun } from './trace';
 
-/** Low, in front of the car's right side, whole car in frame: the dip of the nose, the front wheel and the disc glow all read. */
-const SHOT: Shot = { position: [4.4, 0.75, 6.8], target: [0.2, 0.36, 0] };
+/**
+ * In front of the car's right side, just above it, aimed over the roof so the car sits low in the
+ * free area: this station's dock is tall, and the axle arrows and their tags need the room above.
+ */
+const SHOT: Shot = { position: [5.67, 1.56, 9.35], target: [-0.1, 0.85, 0] };
 
 /** The slider's useful range as "brake from": below this a stop is over before anything happens. */
 export const BRAKE_FROM_KMH = { min: 120, max: 345 } as const;

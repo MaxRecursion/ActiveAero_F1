@@ -17,8 +17,7 @@ const SLOW_KMH = 100;
 /** Disc temperatures are guesses, so they are quoted to the nearest ten. */
 const tens = (c: number) => fmtC(Math.round(c / 10) * 10);
 const B = ESTIMATES.brakes;
-/** Working window of carbon-carbon brakes, as publicly reported. */
-const WINDOW_C = { min: 350, max: 550 } as const;
+const WINDOW_C = B.workingWindowC;
 const kmhText = (kmh: number) => `${fmtKmh(kmh)} km/h`;
 
 export function brakingSections(): HTMLElement[] {

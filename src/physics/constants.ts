@@ -125,6 +125,8 @@ export const ESTIMATES = {
    * reported for carbon-carbon brakes (working window 350–550 °C, peaks above 1000 °C).
    */
   brakes: {
+    /** The range carbon-carbon discs are reported to work best in (public reports, not a guess). */
+    workingWindowC: { min: 350, max: 550 },
     /** A brake zone ends at this speed: a slow corner. */
     apexKmh: 80,
     /** Disc temperature when the driver first touches the pedal. */

@@ -37,8 +37,8 @@ const FALL_GAP_M = 0.45;
 /** Flaps travel at the regulation's slowest allowed rate: full travel in 400 ms. */
 const FLAP_TRAVEL_PER_S = 1000 / REGS.activeAeroSwitchMs.value;
 
-/** 1 m of axle-load arrow = 8 kN: a front axle carrying about 9 kN is a little over a metre tall. */
-const AXLE_METRES_PER_NEWTON = 1 / 8000;
+/** 1 m of axle-load arrow = 16 kN: the most any axle carries (≈15 kN braking from 345 km/h) stays about car height. */
+const AXLE_METRES_PER_NEWTON = 1 / 16000;
 /** Easing rates (1/s) for Station 4: the pitch is quick, the discs cool slowly. */
 const PITCH_EASE = 7;
 const DISC_EASE = 3;
