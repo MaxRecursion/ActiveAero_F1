@@ -17,6 +17,7 @@ import { createUI } from '../ui/createUI';
 import type { StationId, StationUIConfig } from '../ui/types';
 import { createEngineSound } from './engineSound';
 import { createGarage, easeInOut } from './garage';
+import { getLivery, setLiveryPreference } from '../scene/car/livery/preference';
 import { getTheme } from '../theme';
 
 /** Tab order. */
@@ -49,15 +50,25 @@ export function startApp(stage: Stage, uiRoot: HTMLElement, car: CarModel) {
   const engineSound = createEngineSound();
 
   const speed = { target: 0, kmh: 0 };
+  const heard = {
+    kmh: 0,
+    straightT: 0,
+    load: undefined as number | undefined,
+    brake: 0,
+    mguKKw: 0,
+  };
   let sweep: null | { t: number; loop: boolean; from: number; to: number; duration: number } = null;
   let active: Station | undefined;
 
+  const livery = getLivery();
+  car.setLivery(livery);
   const ui = createUI({
     root: uiRoot,
     minKmh: SPEED_RANGE_KMH.min,
     maxKmh: SPEED_RANGE_KMH.max,
     stations: STATIONS.map((s) => s.config),
     initialStation: stationFromHash() ?? 'downforce',
+    initialLivery: livery,
     handlers: {
       onSpeedInput(kmh) {
         stopSweep();
@@ -70,6 +81,10 @@ export function startApp(stage: Stage, uiRoot: HTMLElement, car: CarModel) {
       },
       onSoundToggle: (muted) => engineSound.setMuted(muted),
       onThemeChange: (theme) => stage.setTheme(theme),
+      onLiveryChange(id) {
+        setLiveryPreference(id);
+        car.setLivery(id);
+      },
       onAeroMode: (mode) => active?.onAeroMode?.(mode),
       onPlayToggle() {
         if (active?.onPlayToggle) active.onPlayToggle();
@@ -161,8 +176,6 @@ export function startApp(stage: Stage, uiRoot: HTMLElement, car: CarModel) {
 
   const onHash = () => switchTo(stationFromHash() ?? 'downforce');
   window.addEventListener('hashchange', onHash);
-  window.addEventListener('pointerdown', engineSound.unlock);
-  window.addEventListener('keydown', engineSound.unlock);
 
   // ── layout: keep the car centred in the part of the screen the UI leaves free ──
   const syncInsets = () => stage.setInsets(ui.getInsets());
@@ -173,10 +186,16 @@ export function startApp(stage: Stage, uiRoot: HTMLElement, car: CarModel) {
     stepSweep(dt);
     if (!sweep) speed.kmh = THREE.MathUtils.damp(speed.kmh, speed.target, 7, dt);
     if (Math.abs(speed.kmh - speed.target) < 0.05) speed.kmh = speed.target;
-    engineSound.setSpeed(speed.kmh);
     active?.frame(dt, speed.kmh);
     const own = active?.currentKmh?.();
     if (own !== undefined) speed.target = speed.kmh = own;
+    const cue = active?.audio?.();
+    heard.kmh = cue?.kmh ?? speed.kmh;
+    heard.straightT = garage.straightT;
+    heard.load = cue ? cue.load : undefined;
+    heard.brake = cue?.brake ?? 0;
+    heard.mguKKw = cue?.mguKKw ?? 0;
+    engineSound.update(heard);
   });
 
   switchTo(stationFromHash() ?? 'downforce');
@@ -194,6 +213,9 @@ export function startApp(stage: Stage, uiRoot: HTMLElement, car: CarModel) {
         return active?.config.meta.id;
       },
       garage,
+      car,
+      stage,
+      sound: engineSound,
     };
   }
 
@@ -201,8 +223,6 @@ export function startApp(stage: Stage, uiRoot: HTMLElement, car: CarModel) {
     dispose() {
       offFrame();
       window.removeEventListener('hashchange', onHash);
-      window.removeEventListener('pointerdown', engineSound.unlock);
-      window.removeEventListener('keydown', engineSound.unlock);
       engineSound.dispose();
       active?.exit();
       ui.dispose();

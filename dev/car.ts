@@ -11,7 +11,7 @@ import { buildCar } from '../src/scene/car/buildCar';
 import { loadCar } from '../src/scene/car/loadCar';
 import { createWindTunnel } from '../src/scene/effects/tunnel';
 import { PALETTE } from '../src/scene/palette';
-import type { CarAnchors, PartId } from '../src/scene/car/types';
+import type { CarAnchors, LiveryId, PartId } from '../src/scene/car/types';
 
 const inTunnel = params.get('tunnel') === '1';
 // Load before the harness starts so its ready flag means the car is on screen.
@@ -33,6 +33,7 @@ const ids = (key: string) => (params.get(key)?.split(',').filter(Boolean) ?? [])
 car.setExplode(num('explode', 0));
 car.setActiveAero(num('aero', 0));
 car.setXray(num('xray', 0));
+car.setLivery((params.get('livery') ?? 'clay') as LiveryId);
 car.setWheelSpin(num('spin', 0));
 car.setRideHeightDrop(num('drop', 0));
 const highlight = ids('highlight');

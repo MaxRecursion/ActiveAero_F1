@@ -39,6 +39,23 @@ export interface Station {
   onAeroMode?(mode: AeroMode): void;
   /** Once per frame with the shared speed: physics → garage.update → ui.render. */
   frame(dt: number, kmh: number): void;
+  /**
+   * Car sound for this frame. Stations where the car is simply holding the shared speed omit it,
+   * and the mix infers throttle from the aero power balance.
+   */
+  audio?(): SoundCue | void;
+}
+
+/** What a station adds when speed alone is the wrong story: a stop, a lift, a lap. */
+export interface SoundCue {
+  /** Speed the car is actually doing, when that is not the shared slider. */
+  kmh?: number;
+  /** 0 overrun … 1 full power. */
+  load: number;
+  /** 0–1, from how hard the brakes are working. */
+  brake: number;
+  /** Signed motor kW: + deploying, − harvesting. */
+  mguKKw: number;
 }
 
 export type StationFactory = (ctx: StationContext) => Station;

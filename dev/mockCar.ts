@@ -161,6 +161,7 @@ export function createMockCar(): CarModel {
     },
     setActiveAero() {},
     setHighlight() {},
+    setLivery() {},
     setXray(t) {
       // The shell is the only clay here: a plain opacity blend is enough for effects work.
       const k = THREE.MathUtils.clamp(t, 0, 1);

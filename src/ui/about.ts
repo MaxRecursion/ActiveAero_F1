@@ -30,7 +30,9 @@ export interface AboutDialog {
 const DISCLAIMER =
   'UNSEEN is an independent fan project. It is unofficial and is not affiliated with, endorsed by or associated in any way with the Formula 1 companies, the FIA or any team. ' +
   'F1, FORMULA ONE, FORMULA 1, FIA FORMULA ONE WORLD CHAMPIONSHIP, GRAND PRIX and related marks are trade marks of ' +
-  "Formula One Licensing B.V. No team's car is depicted: the body is a concept design, and the power unit and cockpit inside it are simplified stand-ins.";
+  'Formula One Licensing B.V. The body is a concept model, not any team’s car, and the power unit and cockpit inside it are simplified stand-ins. ' +
+  'The optional paint schemes are unofficial colour interpretations of the 2026 Mersedez, Red Bul, Ferarri and McLaran cars: colour, fade and simple shapes only, with no team or sponsor marks. ' +
+  'Team names appear only to say which colours are meant and belong to their owners.';
 
 /** Station 1 — force from speed. */
 function downforceSections(): HTMLElement[] {
@@ -288,7 +290,14 @@ export function createAbout(stations: StationMeta[]): AboutDialog {
       link('Qvist_designs', 'https://sketchfab.com/Qvist_Designs'),
       ', licensed under ',
       link('CC-BY-4.0', 'http://creativecommons.org/licenses/by/4.0/'),
-      '. Changes: the body was split into parts, simplified and given a plain matte finish; the power unit, battery, gearbox and driver were added.',
+      '. Changes: the body was split into parts, simplified and given a plain matte finish (with optional unofficial paint schemes on top); the power unit, battery, gearbox and driver were added.',
+    ]),
+    h('p', 'about-credit', [
+      'Engine sound: a real recording, “',
+      link('Import car revs on Chassis Dyno with Turbo', 'https://freesound.org/people/editboy23/sounds/496171/'),
+      '” by editboy23 on Freesound, released under ',
+      link('CC0 1.0', 'https://creativecommons.org/publicdomain/zero/1.0/'),
+      '. A turbocharged Toyota Supra on a chassis dyno, trimmed and played back by position in the recording, not sped up or pitched. It is a road-car engine, not a 2026 power unit.',
     ]),
   ]);
 
@@ -311,6 +320,7 @@ export function createAbout(stations: StationMeta[]): AboutDialog {
       key(['A'], 'Airflow lines on / off'),
       key(['E'], 'Exploded view (station 01)'),
       key(['C'], 'Ceiling test (station 01)'),
+      key(['L'], 'Next paint scheme: clay, Mersedez, Red Bul, Ferarri, McLaran'),
       key(['R'], 'Reset the camera'),
       key(['?', 'H'], 'Open this sheet'),
       key(['Esc'], 'Close it'),

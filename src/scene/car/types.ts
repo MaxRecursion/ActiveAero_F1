@@ -33,6 +33,9 @@ export type PartId =
 
 export type PartGroup = 'aero' | 'chassis' | 'wheels' | 'powertrain' | 'driver';
 
+/** Studio clay, or an unofficial colour scheme for one of the four 2026 works teams. */
+export type LiveryId = 'clay' | 'mersedez' | 'redbul' | 'ferarri' | 'mclaran';
+
 export interface CarPart {
   id: PartId;
   /** Human label, e.g. "Front wing". */
@@ -112,6 +115,11 @@ export interface CarModel {
    * the discs and calipers inside show. The brake hardware is only drawn while this is above 0.
    */
   setWheelGhost(t: number): void;
+  /**
+   * Studio clay, or an unofficial 2026 colour scheme (Mersedez, Red Bul, Ferarri, McLaran).
+   * The body stays the concept model; only its paint changes.
+   */
+  setLivery(id: LiveryId): void;
   dispose(): void;
 }
 

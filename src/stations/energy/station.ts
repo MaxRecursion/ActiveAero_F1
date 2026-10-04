@@ -14,7 +14,7 @@ import { CIRCUIT_NAME } from '../../physics/track';
 import type { Shot } from '../../scene/stage';
 import { prefersReducedMotion } from '../../scene/stage';
 import type { LapTrace, StationUIConfig } from '../../ui/types';
-import type { Station, StationContext } from '../types';
+import type { SoundCue, Station, StationContext } from '../types';
 import { captionFor } from './content';
 
 /** Close three-quarter on the car's right (the MGU-K side): battery, engine, motor and rear axle fill the frame. */
@@ -78,6 +78,7 @@ export function createEnergyStation({ garage, ui }: StationContext): Station {
     kmh: 0,
   };
   const current = () => (state.clipping ? laps.on : laps.off);
+  const sound: SoundCue = { load: 0, brake: 0, mguKKw: 0 };
 
   function setPlaying(on: boolean) {
     state.playing = on;
@@ -144,6 +145,10 @@ export function createEnergyStation({ garage, ui }: StationContext): Station {
         charge: x.socMJ / REGS.energyStoreWindowMJ.value,
       });
       garage.update(dt, x.kmh, aeroState(x.kmh, undefined, garage.straightT));
+      const load = x.engineKw / ESTIMATES.iceKw;
+      sound.load = load <= 0 ? 0 : load >= 1 ? 1 : load;
+      sound.brake = x.phase === 'brake' ? 1 : 0;
+      sound.mguKKw = x.mguKKw;
       ui.render({
         station: 'energy',
         view: {
@@ -163,5 +168,6 @@ export function createEnergyStation({ garage, ui }: StationContext): Station {
         },
       });
     },
+    audio: () => sound,
   };
 }

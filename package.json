@@ -11,6 +11,10 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "shot": "node scripts/shot.mjs",
+    "livery:shots": "node scripts/livery-shots.mjs",
+    "audio:render": "node scripts/render-audio.mjs",
+    "verify:clay": "node scripts/verify-clay.mjs",
+    "verify:sound": "node scripts/verify-sound.mjs",
     "model": "node --max-old-space-size=8192 scripts/model/process.mjs"
   },
   "dependencies": {
