@@ -4,6 +4,7 @@
  * programs between them, so the cost is only a few uniforms.
  */
 import * as THREE from 'three';
+import { carryLivery } from './livery/shader';
 import { PALETTE } from '../palette';
 
 export type MatKey =
@@ -139,8 +140,17 @@ export class PartMaterials {
       if (!key) throw new Error('car: ghostOf() needs a material from this set');
       g = createGhost(SPECS[key], this.looks[key] ?? SHELL_LOOK);
       this.ghosts.set(solid, g);
+      carryLivery(solid, g);
     }
     return g;
+  }
+
+  /** The finish for `key`, plus its ghost once one exists. Missing keys are not created. */
+  materialsFor(key: MatKey): THREE.MeshStandardMaterial[] {
+    const solid = this.byKey.get(key);
+    if (!solid) return [];
+    const ghost = this.ghosts.get(solid);
+    return ghost ? [solid, ghost] : [solid];
   }
 
   /**

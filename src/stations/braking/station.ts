@@ -16,7 +16,7 @@ import { aeroState, type AeroState } from '../../physics/aero';
 import { ESTIMATES, REGS } from '../../physics/constants';
 import type { Shot } from '../../scene/stage';
 import type { BrakeState, CaptionRun, Station4View, StationUIConfig } from '../../ui/types';
-import type { Station, StationContext } from '../types';
+import type { SoundCue, Station, StationContext } from '../types';
 import { captionFor, phaseOf, PRESETS, type BrakePhase } from './content';
 import { makeBrakeRun, viewAt, type BrakeMoment, type BrakeRun } from './trace';
 
@@ -49,6 +49,8 @@ export const BRAKING_CONFIG: StationUIConfig = {
 };
 
 const entryOf = (kmh: number) => Math.min(BRAKE_FROM_KMH.max, Math.max(BRAKE_FROM_KMH.min, Math.round(kmh)));
+/** A stop from the top of the slider is about 3 MW at the tyres; that is full-scale scrub. */
+const BRAKE_SOUND_KW = 3200;
 
 export function createBrakingStation({ garage, ui }: StationContext): Station {
   const state = {
@@ -87,6 +89,8 @@ export function createBrakingStation({ garage, ui }: StationContext): Station {
   const captionOf = { run: null as BrakeRun | null, phase: 'ready' as BrakePhase, paused: false };
   let aero: AeroState | null = null;
   const aeroOf = { kmh: -1, straightT: -1 };
+  const sound: SoundCue = { kmh: 0, load: 0.04, brake: 0, mguKKw: 0 };
+  let soundOn = false;
 
   function setPlaying(on: boolean) {
     if (state.playing === on) return;
@@ -273,6 +277,18 @@ export function createBrakingStation({ garage, ui }: StationContext): Station {
       }
       garage.update(dt, kmh, aero);
       ui.render({ station: 'braking', view: view! });
+      if (state.mode === 'ready') soundOn = false;
+      else {
+        soundOn = true;
+        sound.kmh = view!.kmh;
+        sound.load = 0.04;
+        const brake = view!.brakeKw / BRAKE_SOUND_KW;
+        sound.brake = brake <= 0 ? 0 : brake >= 1 ? 1 : brake;
+        sound.mguKKw = -view!.harvestKw;
+      }
+    },
+    audio() {
+      return soundOn ? sound : undefined;
     },
   };
 }

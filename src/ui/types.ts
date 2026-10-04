@@ -1,3 +1,4 @@
+import type { LiveryId } from '../scene/car/types';
 import type { Theme } from '../theme';
 
 /**
@@ -254,9 +255,11 @@ export interface UIHandlers {
   onSpeedInput(kmh: number): void;
   onTowGapInput(gapM: number): void;
   onToggle(id: ToggleId, on: boolean): void;
-  /** Whether the engine sound is muted. */
+  /** Whether the car sound is muted. */
   onSoundToggle(muted: boolean): void;
   onThemeChange(theme: Theme): void;
+  /** Studio clay, or a 2026 team colour scheme. */
+  onLiveryChange(id: LiveryId): void;
   /** Play / stop the automatic speed sweep. */
   onPlayToggle(): void;
   onResetView(): void;
@@ -278,6 +281,8 @@ export interface UIOptions {
   handlers: UIHandlers;
   stations: StationUIConfig[];
   initialStation: StationId;
+  /** Paint already on the car. Defaults to studio clay. */
+  initialLivery?: LiveryId;
   minKmh: number;
   maxKmh: number;
 }

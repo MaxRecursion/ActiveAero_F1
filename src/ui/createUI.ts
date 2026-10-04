@@ -33,6 +33,7 @@ import { createCaption } from './caption';
 import { createForceChart } from './chart';
 import { createEnergyReadouts } from './energyReadouts';
 import { createLapControl } from './lapControl';
+import { createLiverySwitch } from './liverySwitch';
 import { createModeSwitch } from './modeSwitch';
 import { createPowerChart } from './powerChart';
 import { createReadouts } from './readouts';
@@ -113,15 +114,16 @@ export function createUI(opts: UIOptions): UI {
     (id) => pickStation(id),
   );
   const prompt = h('p', 'prompt');
+  const livery = createLiverySwitch(opts.initialLivery ?? 'clay', (id) => handlers.onLiveryChange(id));
   const header = h('header', 'ui-header', [
     h('h1', { class: 'wordmark', text: 'UNSEEN' }),
     h('p', { class: 'tagline', text: 'The 2026 grand-prix car, opened up.' }),
-    h('div', 'header-meta', [tabs.el, prompt]),
+    h('div', 'header-meta', [tabs.el, prompt, livery.el]),
   ]);
 
   // ── toolbar ───────────────────────────────────────────────────────────────────
   const play = toolButton('play', 'Play speed sweep', 'Space', 'Space');
-  const sound = toolButton('volumeMuted', 'Unmute engine sound');
+  const sound = toolButton('volumeMuted', 'Unmute car sound');
   sound.btn.classList.add('sound-btn');
   sound.btn.setAttribute('aria-pressed', 'false');
   let theme = getTheme();
@@ -329,7 +331,7 @@ export function createUI(opts: UIOptions): UI {
 
   const onPlay = () => handlers.onPlayToggle();
   function syncSoundButton() {
-    const label = soundMuted ? 'Unmute engine sound' : 'Mute engine sound';
+    const label = soundMuted ? 'Unmute car sound' : 'Mute car sound';
     sound.btn.setAttribute('aria-label', label);
     sound.btn.setAttribute('aria-pressed', String(!soundMuted));
     sound.tipLabel.textContent = label;
@@ -381,6 +383,7 @@ export function createUI(opts: UIOptions): UI {
     if (/^[1-9]$/.test(key) && stationByKey) pickStation(stationByKey.meta.id);
     else if (key in KEY_TOGGLES && toggleShown(KEY_TOGGLES[key])) flipToggle(KEY_TOGGLES[key]);
     else if (key === 'm' && active === 'activeAero') flipMode();
+    else if (key === 'l') livery.cycle();
     else if (key === 'r') handlers.onResetView();
     else if (key === '?' || key === 'h') about.open(active);
     else return;
@@ -543,6 +546,7 @@ export function createUI(opts: UIOptions): UI {
       tow.dispose();
       s3.chart.dispose();
       modeSwitch.dispose();
+      livery.dispose();
       s1.chart.dispose();
       s2.chart.dispose();
       s4.chart.dispose();

@@ -6,9 +6,10 @@
  */
 import * as THREE from 'three';
 import { AXLE_X, TYRE } from './dims';
+import { applyLivery, prepareLivery } from './livery/apply';
 import { PartMaterials, WHEEL_LOOKS } from './materials';
 import { Brakes } from './parts/brakes';
-import type { CarAnchors, CarModel, CarPart, PartGroup, PartId } from './types';
+import type { CarAnchors, CarModel, CarPart, LiveryId, PartGroup, PartId } from './types';
 import { GhostSwap } from './xray';
 
 type V3 = THREE.Vector3Tuple;
@@ -126,6 +127,7 @@ export class CarAssembly {
     const xray = new GhostSwap(entries.filter((e) => shell.includes(e.id)));
     const wheelGhost = new GhostSwap(entries.filter((e) => e.group === 'wheels'));
     root.updateMatrixWorld(true);
+    prepareLivery(entries);
     const low = lowPoints(entries);
     const wheelbase = AXLE_X.front - AXLE_X.rear;
     const pivotY = TYRE.rear.radius;
@@ -219,6 +221,9 @@ export class CarAssembly {
         const k = THREE.MathUtils.clamp(t, 0, 1);
         wheelGhost.set(k);
         brakes.setVisible(k > 0);
+      },
+      setLivery(id: LiveryId) {
+        applyLivery(entries, id);
       },
       dispose() {
         root.removeFromParent();
