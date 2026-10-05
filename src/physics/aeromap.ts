@@ -55,8 +55,10 @@ export const AEROMAP = {
     /** … to XR = −350 mm. */
     rearX: X_R + 0.35,
     /**
-     * Ground contact stiffness of the floor at the plank: FIA C3.18.7 requires the central floor to be
-     * stiffer than 3 kN/mm. The tyre/ground side is stiffer still, so the floor sets it.
+     * Ground contact stiffness of the floor at the plank. Estimate built on regulation minimums: FIA
+     * C3.18.7 requires the central floor to be stiffer than 3 kN/mm at the middle plank hole (and 6 kN/mm at
+     * the rear hole); the front floor test (C3.18.5) asks about 1 kN/mm at XF = 500. 3 kN/mm is used at both
+     * plank ends.
      */
     rateNPerMm: 3000,
   },
@@ -82,8 +84,11 @@ export const AEROMAP = {
     zerihanCl: [1.61, 1.68, 1.7, 1.72, 1.7, 1.62, 1.42, 1.27, 1.09, 0.95, 0.84, 0.69],
     freestreamCl: 0.69,
     /**
-     * A race wing behaves like Zerihan's fixed-transition case: +117 % from freestream to maximum, against
-     * +149 % (1.72 / 0.69) free (same thesis, §6.3). So the measured gain is scaled by 117/149.
+     * A race wing behaves like the fixed-transition case: +117 % from freestream to maximum (Zhang, Toet &
+     * Zerihan 2006, §4.5; the thesis, §6.3, gives CL_max 1.39 at h/c 0.112 with a plateau below), against
+     * +149 % for the free-transition curve used here (1.72 / 0.69; the review quotes 141 %). Scaling the
+     * measured gain by 117/149 (rather than 117/141) is the more conservative choice: a slightly less
+     * height-sensitive wing.
      */
     fixedTransitionScale: 117 / 149,
   },
@@ -135,15 +140,23 @@ export const AEROMAP = {
       0.75, 0.67, 0.61, 0.52,
     ],
     /**
-     * Width, in η, over which the measured drop between η = 0.43 and 0.47 is rounded (a modelling choice:
-     * the data only bracket the drop). Two shoulder points continue the neighbouring measured slopes up to
-     * the edges of a step this wide, centred in the gap, so the drop stays as steep as the measurement
-     * allows while its slope stays finite. The cliff is what makes porpoising possible.
+     * Width, in η, over which the measured drop between η = 0.43 and 0.47 is rounded. A MODELLING CHOICE,
+     * not data: the 10° measurements only bracket the drop. Two shoulder points continue the neighbouring
+     * measured slopes up to the edges of a step this wide, centred in the gap, so the slope stays finite.
+     * The resulting steepest slope, dF/dη ≈ 13.6 (≈ 7.9 per unit η of the normalised curve), is 1.9× the
+     * straight line between the two bracketing points. Why steeper than that line: this floor's ramp is
+     * ≈ 13.3°, between Ruhrmann's 10° diffuser (drop bracketed, no hysteresis) and his 15° one, whose
+     * measured drop is abrupt — about −33 % of the maximum within Δη ≈ 0.023 (Fig. 3; normalised slope ≈ 14).
+     * The cliff is what makes porpoising possible, and the result depends on it: with a straight-line drop
+     * between the measured points the low preset's least damping ratio stays at ≈ +0.03 and it does not
+     * porpoise (independent review, 2026-10). Treat the porpoising read-out as an illustration of the
+     * mechanism, not a prediction.
      */
     cliffWidthEta: 0.03,
     /**
-     * Measured maximum CL by diffuser angle (same paper, Fig. 4): 1.46 (5°), 1.73 (10°), 1.95 (15°),
-     * 1.94 (17°), 1.93 (20°). The floor's amplitude follows CL_max(θ_eff) / CL_max(10°), so pitching the
+     * Measured maximum CL by diffuser angle: 1.46 (5°), 1.73 (10°), 1.95 (15°), 1.93 (20°) from the same
+     * paper (Figs 2a, 4; plot readings) and 1.94 (17°) from Senior & Zhang 2001 (as tabulated in the 2006
+     * review / Genua 2009). The floor's amplitude follows CL_max(θ_eff) / CL_max(10°), so pitching the
      * nose down (steeper ramp relative to the ground) adds pumping, as the high-rake era exploited.
      */
     clMaxAngleDeg: [5, 10, 15, 17, 20],
@@ -173,7 +186,8 @@ export const AEROMAP = {
      * Edge leakage: air leaks in under the floor's edges, so the suction builds from the leading edge toward
      * the throat, λ(ξ) = λ_LE + (1 − λ_LE)·ξ^p (ξ = 0 at the leading edge, 1 at the throat). Estimates.
      * p = 8 follows Ruhrmann's centreline pressures (Fig. 6): about ⅓ of the inlet's peak suction one
-     * half-width upstream (ξ ≈ 0.81 → λ 0.25–0.33) and about half at ξ ≈ 0.88 (λ 0.37–0.66); p = 8 gives
+     * model half-width upstream of the inlet — ξ ≈ 0.81 when scaled by the fraction of the underbody length
+     * (x/d 4.0 of 4.95) — (λ 0.25–0.33) and about half at ξ ≈ 0.88 (λ 0.37–0.66); p = 8 gives
      * 0.28 and 0.43. λ_LE then sets the floor's centre of pressure at the reference to −0.45 m, the value
      * that holds the other stations' balance (calibrated to 4 digits; 0.11 → −0.46 m, 0.12 → −0.43 m).
      */
@@ -188,16 +202,21 @@ export const AEROMAP = {
      */
     starvationGapM: 0.005,
     /**
-     * Drag added per unit of floor downforce: Ruhrmann's 10° body goes from CD 0.32 to 0.43 as CL rises
-     * from 1.0 to 1.73 (same reference area), ΔCD/ΔCL ≈ 0.15. Drag falls again past the peak.
-     * Caveat: a whole car's drag map is flatter than this implies (GP2: drag 95.8–100 % while downforce
-     * spans 76.7–100 %, Gadola 2022). Where the car runs, drag stays within a few % of 1.1 m²; at the
-     * chart's extreme corners (nose up, floor stalled or far from the ground) the floor's lost downforce
-     * takes up to ≈ 20 % of the drag with it.
+     * Drag added per unit of floor downforce, ΔCdA / ΔClA_floor. Estimate from a whole-car map: in the
+     * published GP2 ground-effect map drag spans 95.8–100 % while downforce spans 76.7–100 % (Gadola et al.
+     * 2022), i.e. ≈ (0.042·1.1)/(0.233·3.2) ≈ 0.06 in our units. (An isolated bluff body is steeper —
+     * Ruhrmann's 10° body gives ΔCD/ΔCL ≈ 0.15 — but most of a car's drag does not come from its floor.)
+     * Drag falls again past the peak. The wings' induced drag adds to this, so the whole map still spans
+     * roughly −12 % … +4 % of 1.1 m², most of it at nose-up or stalled corners.
      */
-    dragPerDownforce: 0.15,
-    /** "Peak" regime: within 2 % of the curve's maximum (a definition for the read-out, not a measurement). */
+    dragPerDownforce: 0.06,
+    /**
+     * Read-out bands (definitions, not measurements): "attached" above the band where the curve is within 2 %
+     * of its maximum; "peak" from there down to the measured drop; "stalled" once on the drop itself
+     * (below its rounded top, η < 0.465), where Ruhrmann's flow separates and the downforce falls away.
+     */
     peakBand: 0.98,
+    stalledBelowEta: 0.465,
   },
 
   platform: {
@@ -274,7 +293,9 @@ export const REFERENCE_RIDE: RideHeights = { frontMm: 27, rearMm: 73 };
  * reaches between rest and 350 km/h (the low preset gets down to ≈ 8 / 19 mm).
  */
 export const MAP_RANGE: { frontMm: [number, number]; rearMm: [number, number] } = {
-  frontMm: [0, 60],
+  // Down to −5 mm: with the rear high, the reference plane extended to the front axle line can pass below the
+  // ground at speed while the plank (which starts 430 mm behind that line) is only just touching.
+  frontMm: [-5, 60],
   rearMm: [10, 150],
 };
 
@@ -681,8 +702,7 @@ function evaluate(hF: number, hR: number): MapEval {
   K_FLOOR = CLA_FLOOR_REF / evaluate(hF, hR).clFloor;
 }
 
-/** Throat gap, in units of η, where the floor makes the most downforce; and the ends of the "peak" band. */
-const PEAK_ETA_LOW = bandEdge(0.2, FL.peakEta);
+/** Upper end of the "peak" band, in units of η: above it the floor reads "attached". */
 const PEAK_ETA_HIGH = bandEdge(FL.peakEta, 2);
 function bandEdge(a: number, b: number): number {
   const target = FL.peakBand * floorCurve(FL.peakEta);
@@ -698,7 +718,7 @@ function bandEdge(a: number, b: number): number {
 }
 
 function regimeOf(eta: number): FloorRegime {
-  if (eta < PEAK_ETA_LOW) return 'stalled';
+  if (eta < FL.stalledBelowEta) return 'stalled';
   if (eta > PEAK_ETA_HIGH) return 'attached';
   return 'peak';
 }
@@ -721,7 +741,11 @@ export interface MapPoint {
     regime: FloorRegime;
     /** h_t / (d_eff·θ_eff): Ruhrmann's ride-height parameter. */
     eta: number;
-    /** Pressure coefficient at the throat (the deepest suction when attached). */
+    /**
+     * Pressure coefficient at the throat (the deepest suction when attached). It is solved so the pressure
+     * integral equals the floor's ClA, so away from the reference it can go about 25 % beyond the −1.3 … −2.4
+     * Ruhrmann measured at a diffuser inlet (down to ≈ −3.0 on the chart).
+     */
     throatCp: number;
     /** Where the diffuser flow separates (null when attached), m. */
     separationX: number | null;
@@ -1542,20 +1566,35 @@ export function bodyModes(speedKmh: number, setup: RideHeights): BounceMode[] {
   return modes.sort((a, b) => a.frequencyHz - b.frequencyHz);
 }
 
+/**
+ * Body modes (heave and pitch of the car on its springs) sit at 3.5–7 Hz. When the plank touches, a stiff
+ * plank-contact mode near 16 Hz appears: that is the floor bearing on the ground, not the car bouncing, so
+ * the read-out leaves it out unless it is the one growing.
+ */
+const BODY_MODE_MAX_HZ = 10;
+
 /** The least-damped body mode at a speed: its frequency, damping ratio and whether it grows (porpoising). */
 export function bounceModes(speedKmh: number, setup: RideHeights): BounceMode {
   const { re, im } = linearEigen(speedKmh, setup);
   let best = Infinity;
   let freq = 0;
+  let worstAny = Infinity;
+  let worstAnyFreq = 0;
   for (let i = 0; i < re.length; i++) {
     const w = Math.hypot(re[i], im[i]);
     if (!(im[i] > 1e-6 * w) || w === 0) continue;
     const zeta = -re[i] / w;
-    if (zeta < best) {
+    const hz = im[i] / (2 * Math.PI);
+    if (zeta < worstAny) {
+      worstAny = zeta;
+      worstAnyFreq = hz;
+    }
+    if (hz < BODY_MODE_MAX_HZ && zeta < best) {
       best = zeta;
-      freq = im[i] / (2 * Math.PI);
+      freq = hz;
     }
   }
+  if (worstAny < 0 && worstAny < best) return { frequencyHz: worstAnyFreq, dampingRatio: worstAny, unstable: true };
   if (best === Infinity) return { frequencyHz: 0, dampingRatio: 1, unstable: false };
   return { frequencyHz: freq, dampingRatio: best, unstable: best < 0 };
 }
@@ -1583,6 +1622,32 @@ export function porpoiseOnsetKmh(setup: RideHeights, maxKmh: number = SPEED_RANG
   return null;
 }
 
+/**
+ * The speeds between which the set-up porpoises, [onset, end] km/h, or null if it never does up to maxKmh.
+ * The window can close again: further down the stall side the floor's slope flattens, and once the plank
+ * is on the road the ground holds the car. A 2 km/h scan, then bisection at each edge; the first window.
+ */
+export function porpoiseRangeKmh(setup: RideHeights, maxKmh: number = SPEED_RANGE_KMH.max): [number, number] | null {
+  const onset = porpoiseOnsetKmh(setup, maxKmh);
+  if (onset === null) return null;
+  const step = 2;
+  let prev = onset;
+  for (let v = onset + step; v <= maxKmh + 1e-9; v += step) {
+    if (!bounceModes(v, setup).unstable) {
+      let lo = prev;
+      let hi = v;
+      while (hi - lo > 0.1) {
+        const mid = 0.5 * (lo + hi);
+        if (bounceModes(mid, setup).unstable) lo = mid;
+        else hi = mid;
+      }
+      return [onset, Math.round(lo * 10) / 10];
+    }
+    prev = v;
+  }
+  return [onset, maxKmh];
+}
+
 export interface BounceSim {
   /** Start at the platform equilibrium for this set-up and speed, plus a small fixed disturbance. */
   reset(setup: RideHeights, speedKmh: number): void;
@@ -1597,7 +1662,11 @@ export interface BounceSim {
 /**
  * Time-domain heave + pitch: the full nonlinear map at the instantaneous ride heights, the floor's force
  * lagging by τ, the plank's contact, RK4 with ≤ 1 ms substeps. When the set-up is stable it settles on the
- * platform; when not, the bounce grows until the floor curve's shape and the plank bound it.
+ * platform; when not, the bounce grows until the floor curve's shape bounds it.
+ * Honest scale: the limit cycle is small — about 2 mm peak to peak (≈ 0.06° of pitch) for the low preset —
+ * because only the narrow rounded cliff (cliffWidthEta) destabilises the car and the 10° data have no
+ * hysteresis loop to widen it; the plank is not reached. Real 2022 porpoising was far larger (Gadola et al.
+ * 2022 model > 1° of pitch, ±0.6 g). The station must draw it exaggerated and say so.
  */
 export function createBounceSim(): BounceSim {
   const s = new Float64Array(6); // hF, hR, vF, vR, pF, pR (m, m/s, N)

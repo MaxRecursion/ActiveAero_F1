@@ -13,6 +13,7 @@ import { TOW_MODEL } from '../physics/tow';
 import { SLOW_MOTION_FACTOR } from '../scene/motion';
 import type { StationId, StationMeta } from './types';
 import { assumptionsTable, formula, list, p, para, pct, row, section, sourced, tag } from './aboutParts';
+import { aeroMapSections } from './aboutAeroMap';
 import { brakingSections } from './aboutBraking';
 import { h } from './dom';
 import { fmtKmh, fmtKmhAtLeast, fmtLimit, fmtMJ, fmtS } from './format';
@@ -228,11 +229,11 @@ function energySections(): HTMLElement[] {
 /** Station 05 — the straight-line benefit and grip cost of following in a wake. */
 function towSections(): HTMLElement[] {
   return [
-    section('13', "What you're seeing", [
+    section('17', "What you're seeing", [
       p('The following car sits in the lead car’s wake. Close the gap to increase the estimated drag reduction, while the same disturbed air reduces the follower’s downforce.'),
       p('The gap is measured from the lead car’s rear to the following car’s nose. The shared speed control sets both cars’ speed.'),
     ]),
-    section('14', 'The model', [
+    section('18', 'The model', [
       h('div', 'formulas formulas--stacked', [
         formula('wake', `exp(−gap / ${TOW_MODEL.wakeDecayM} m)`, 'estimated wake strength at the follower'),
         formula('drag saved', `D · ${TOW_MODEL.maxDragReduction * 100}% · wake`, 'estimated reduction from the lead car’s drag'),
@@ -241,7 +242,7 @@ function towSections(): HTMLElement[] {
       ]),
       p('The estimates decay exponentially with gap. They show the straight-line benefit and grip tradeoff, not a predicted lap-time gain.'),
     ]),
-    section('15', 'What is simplified', [
+    section('19', 'What is simplified', [
       p('This is an illustrative model, not CFD or a team simulation. It assumes both cars stay aligned and at the same speed. It does not model lateral offset, yaw, wind, tyre temperatures, or how the wake changes around the circuit.'),
     ]),
   ];
@@ -254,9 +255,10 @@ export function createAbout(stations: StationMeta[]): AboutDialog {
     energy: energySections,
     braking: brakingSections,
     tow: towSections,
+    aeroMap: () => aeroMapSections((i) => String(20 + i)),
   };
   /** Groups whose content is expensive (it runs a simulation) are filled on first open. */
-  const LAZY = new Set<StationId>(['energy', 'tow']);
+  const LAZY = new Set<StationId>(['energy', 'tow', 'aeroMap']);
   const groups = new Map<StationId, HTMLElement>();
   const pending = new Map<StationId, HTMLElement>();
   const groupEls = stations.map((m) => {
@@ -273,7 +275,7 @@ export function createAbout(stations: StationMeta[]): AboutDialog {
     pending.clear();
   };
 
-  const sources = section('17', 'Sources', [
+  const sources = section('25', 'Sources', [
     h(
       'ul',
       'about-list about-sources',
@@ -282,7 +284,7 @@ export function createAbout(stations: StationMeta[]): AboutDialog {
   ]);
 
   const link = (text: string, href: string) => h('a', { text, attrs: { href, target: '_blank', rel: 'noopener' } });
-  const credits = section('18', 'Credits', [
+  const credits = section('26', 'Credits', [
     h('p', 'about-credit', [
       'This work is based on “',
       link('F1 2026 concept (polygon model)', 'https://sketchfab.com/3d-models/f1-2026-concept-polygon-model-ea3bde709b1e4dc9b0ec8557d106ed42'),
@@ -306,13 +308,14 @@ export function createAbout(stations: StationMeta[]): AboutDialog {
       h('span', 'keys', keys.flatMap((k, i) => [i ? h('span', { class: 'key-or', text: 'or' }) : null, h('kbd', { text: k })])),
       h('span', { text: what }),
     ]);
-  const shortcuts = section('19', 'Keyboard', [
+  const shortcuts = section('27', 'Keyboard', [
     h('div', 'keys-grid', [
       key(stations.map((_, i) => String(i + 1)), 'Switch station'),
       key(['Space'], 'Play / pause the speed sweep or the lap; Brake in station 04'),
       key(['←', '→'], 'Change speed (on the slider)'),
       key(['←', '→'], 'Step along the lap, 1 s — Shift: 5 s (on the timeline)'),
       key(['←', '→'], 'Step along the stop, 0.1 s — Shift: 0.5 s (on the chart)'),
+      key(['←', '→'], 'Change a ride height, 1 mm (on its slider, station 06)'),
       key(['X'], 'X-ray: see through the bodywork (station 03)'),
       key(['W'], 'See-through wheels (station 04)'),
       key(['S'], 'Super clipping on / off (station 03)'),

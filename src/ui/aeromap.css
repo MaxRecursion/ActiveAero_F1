@@ -334,6 +334,10 @@
 .am-path { fill: none; stroke: var(--ink); stroke-width: 1.75; stroke-linejoin: round; stroke-linecap: round; }
 .am-path-tick { fill: var(--paper); stroke: var(--ink); stroke-width: 1.5; }
 .am-setup { fill: rgb(255 255 255 / 0.001); stroke: var(--ink); stroke-width: 2.25; }
+/* Only the generous hit circle under the ring takes the pointer: the ring and the dot for the car now
+   (which sits on the ring while parked) let presses through to it. */
+.am-setup,
+.am-now-group { pointer-events: none; }
 .am-setup-group:hover .am-setup,
 .am-plot.is-dragging .am-setup { stroke-width: 3; }
 .am-setup-hit { fill: transparent; pointer-events: all; cursor: grab; touch-action: none; }

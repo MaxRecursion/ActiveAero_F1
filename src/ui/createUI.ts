@@ -82,7 +82,10 @@ const MARKERS: Record<StationId, MarkerDef[]> = {
   braking: [],
   tow: [],
   // Station 6: where this set-up starts to porpoise (hidden when it never does; see aeromap.css).
-  aeroMap: [{ tone: 'drag', row: 0, side: 'left' }],
+  aeroMap: [
+    { tone: 'drag', row: 0, side: 'left', band: 'next' },
+    { tone: 'drag', row: 1, side: 'right' },
+  ],
 };
 
 const SPEED_LAW: Record<StationId, string> = {
@@ -536,7 +539,9 @@ export function createUI(opts: UIOptions): UI {
         const v = sv.view;
         speed.render(v.speedKmh);
         const onset = v.bounce.onsetKmh;
-        markers[0]?.set(onset ?? opts.maxKmh, onset === null ? '' : `Porpoising ${fmtKmh(onset)}`);
+        // The porpoising window: a short band on the scale from where it starts to where it stops again.
+        markers[0]?.set(onset ?? opts.maxKmh, onset === null ? '' : `Porpoising ${fmtKmh(onset)}–${fmtKmh(v.bounce.untilKmh ?? opts.maxKmh)}`);
+        markers[1]?.set(v.bounce.untilKmh ?? opts.maxKmh, '');
         setOnsetShown(onset !== null);
         ride.render(v);
         s6.read.render(v);

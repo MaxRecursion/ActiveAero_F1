@@ -8,13 +8,14 @@ import { SPEED_RANGE_KMH } from '../physics/constants';
 import type { CarModel } from '../scene/car/types';
 import { prefersReducedMotion, type Stage } from '../scene/stage';
 import { ACTIVE_AERO_CONFIG, createActiveAeroStation } from '../stations/activeAero/station';
+import { AERO_MAP_CONFIG, createAeroMapStation } from '../stations/aeroMap/station';
 import { BRAKING_CONFIG, createBrakingStation } from '../stations/braking/station';
 import { createDownforceStation, DOWNFORCE_CONFIG } from '../stations/downforce/station';
 import { createEnergyStation, ENERGY_CONFIG } from '../stations/energy/station';
 import { createTowStation, TOW_CONFIG } from '../stations/tow/station';
 import type { Station, StationFactory } from '../stations/types';
 import { createUI } from '../ui/createUI';
-import type { StationId, StationUIConfig } from '../ui/types';
+import type { StationId, StationUIConfig, StationView, UI } from '../ui/types';
 import { createEngineSound } from './engineSound';
 import { createGarage, easeInOut } from './garage';
 import { getLivery, setLiveryPreference } from '../scene/car/livery/preference';
@@ -27,6 +28,7 @@ const STATIONS: { config: StationUIConfig; create: StationFactory }[] = [
   { config: ENERGY_CONFIG, create: createEnergyStation },
   { config: BRAKING_CONFIG, create: createBrakingStation },
   { config: TOW_CONFIG, create: createTowStation },
+  { config: AERO_MAP_CONFIG, create: createAeroMapStation },
 ];
 const ROUTES: Record<StationId, string> = {
   downforce: '#/downforce',
@@ -34,6 +36,7 @@ const ROUTES: Record<StationId, string> = {
   energy: '#/energy',
   braking: '#/braking',
   tow: '#/tow',
+  aeroMap: '#/aero-map',
 };
 const SWEEP_SECONDS = 4.5;
 const INTRO_SECONDS = 3.2;
@@ -75,6 +78,7 @@ export function startApp(stage: Stage, uiRoot: HTMLElement, car: CarModel) {
         speed.target = kmh;
       },
       onTowGapInput: (gapM) => active?.onTowGap?.(gapM),
+      onRideHeightInput: (setup) => active?.onRideHeight?.(setup),
       onToggle(id, on) {
         active?.onToggle?.(id, on);
         syncAirflowAvailability();
@@ -101,7 +105,18 @@ export function startApp(stage: Stage, uiRoot: HTMLElement, car: CarModel) {
     },
   });
 
-  const ctx = { stage, garage, ui };
+  // Dev builds remember the last view a station rendered, for headless checks (window.__app.view).
+  let lastView: StationView | null = null;
+  const stationUI: UI = import.meta.env.DEV
+    ? {
+        ...ui,
+        render(view) {
+          lastView = view;
+          ui.render(view);
+        },
+      }
+    : ui;
+  const ctx = { stage, garage, ui: stationUI };
   const stations = Object.fromEntries(STATIONS.map((s) => [s.config.meta.id, s.create(ctx)])) as Record<
     StationId,
     Station
@@ -216,6 +231,12 @@ export function startApp(stage: Stage, uiRoot: HTMLElement, car: CarModel) {
       car,
       stage,
       sound: engineSound,
+      /** Station 6: set the static ride heights as the UI would. */
+      setRide: (setup: { frontMm: number; rearMm: number }) => stations.aeroMap.onRideHeight?.(setup),
+      /** The last view the active station rendered (headless checks read it). */
+      get view() {
+        return lastView;
+      },
     };
   }
 

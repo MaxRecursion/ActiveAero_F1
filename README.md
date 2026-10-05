@@ -1,6 +1,6 @@
 # UNSEEN — the 2026 grand-prix car, opened up
 
-UNSEEN is an interactive 3D explainer of a representative 2026 Formula 1™ car. Explore five **stations**, each built around a control and a physical idea: change the input, watch the car and its live readouts respond, then see a concise explanation of why.
+UNSEEN is an interactive 3D explainer of a representative 2026 Formula 1™ car. Explore six **stations**, each built around a control and a physical idea: change the input, watch the car and its live readouts respond, then see a concise explanation of why.
 
 ## Explore the car
 
@@ -11,10 +11,11 @@ UNSEEN is an interactive 3D explainer of a representative 2026 Formula 1™ car.
 | 03 | **Energy** | Scrubbable lap timeline | Follow a simulated lap to see battery charge, motor deployment, braking recovery, and super clipping. X-ray the car to reveal the power unit and animate energy paths; turn clipping or airflow on and off. |
 | 04 | **Braking** | Entry speed and Brake | Play or scrub a braking zone and inspect deceleration, forward load transfer, exaggerated suspension dive, glowing brake discs, regenerative harvest, and heat. Toggle see-through wheels to reveal the brakes. |
 | 05 | **Tow** | Following-car gap | Compare leading and following-car drag and downforce in an illustrative wake model, including saved power and the grip tradeoff. |
+| 06 | **Aero map** | Speed and static ride heights | The tool aerodynamicists use for a ground-effect car: downforce, drag and balance charted against front and rear ride height. Set the ride heights (sliders, presets or drag the set-up on the map), add speed and watch the car squat across the map, the floor's suction grow and the balance move — until, run too low, the diffuser stalls and the car porpoises. Includes the pressure under the floor. |
 
 All stations include live readouts and explanatory captions. Speed-based stations provide speed presets and an animated speed sweep; the energy and braking stations have timeline playback, scrubbing, and playback-rate controls. The shared interface also includes station tabs, camera reset, engine sound, light/dark themes, an optional paint scheme (clay by default; unofficial Mersedez, Red Bul, Ferarri and McLaran colour interpretations; press `L` to cycle), and a **How it works** reference. Keyboard shortcuts are shown in the interface.
 
-Regulation facts cite the FIA 2026 Technical Regulations (Section C, Issue 20). Unpublished quantities such as aero coefficients, grip, and brake behavior are model assumptions and are identified as **estimates** in the app. The tow wake is illustrative, not CFD. See `src/physics/constants.ts` for values and sources.
+Regulation facts cite the FIA 2026 Technical Regulations (Section C, Issue 20). Unpublished quantities such as aero coefficients, grip, and brake behavior are model assumptions and are identified as **estimates** in the app. The tow wake is illustrative, not CFD. The aero map is a physics-shaped estimate, not a team's data: its shapes come from published moving-ground wind-tunnel tests (Zerihan 2001 for a wing in ground effect, Ruhrmann & Zhang 2003 for a diffuser), set into the 2026 floor and plank geometry and calibrated to the app's ClA and balance; its porpoising is an illustration of the mechanism. See `src/physics/constants.ts` and `src/physics/aeromap.ts` for values and sources.
 
 ## Run it
 
@@ -42,7 +43,7 @@ flowchart LR
   Main --> Car[src/scene/car<br/>Load model or procedural fallback]
   Main --> App[src/app/app.ts<br/>Routing and shared frame loop]
   App --> Garage[src/app/garage.ts<br/>Shared car scene and transitions]
-  App --> Stations[src/stations/*<br/>Five station implementations]
+  App --> Stations[src/stations/*<br/>Six station implementations]
   App --> UI[src/ui/createUI.ts<br/>DOM shell and controls]
   Stations --> Physics[src/physics/*<br/>Documented models]
   Stations --> Garage
@@ -77,7 +78,7 @@ sequenceDiagram
   end
 ```
 
-Station routes are hash-based: `#/downforce`, `#/active-aero`, `#/energy`, `#/braking`, and `#/tow`.
+Station routes are hash-based: `#/downforce`, `#/active-aero`, `#/energy`, `#/braking`, `#/tow`, and `#/aero-map`.
 
 ### Project layout
 
@@ -86,7 +87,7 @@ Station routes are hash-based: `#/downforce`, `#/active-aero`, `#/energy`, `#/br
 | `src/main.ts` | WebGL 2 check, stage/model startup, and fallback handling. |
 | `src/app/` | Station routing, shared speed and animation loop, garage scene, and engine sound (a recorded engine played by position, `src/app/sound/`). |
 | `src/stations/` | Station-specific configuration, interaction, captions, and view models. |
-| `src/physics/` | Aero, powertrain, track/lap, braking, and tow models; constants and sources; focused Vitest tests. |
+| `src/physics/` | Aero, powertrain, track/lap, braking, tow and aero-map (ride height, platform, porpoising) models; constants and sources; focused Vitest tests. |
 | `src/scene/` | Three.js stage, car assembly/materials, motion, and visual effects. |
 | `src/ui/` | Responsive DOM interface, station controls, readouts, charts, track map, captions, and reference dialog. |
 | `models/` and `public/models/` | Original model source and processed runtime asset. |

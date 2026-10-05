@@ -21,6 +21,7 @@ import {
   platformAt,
   platformSweep,
   porpoiseOnsetKmh,
+  porpoiseRangeKmh,
 } from './aeromap';
 import { ESTIMATES } from './constants';
 import type { RideHeights } from '../ui/types';
@@ -207,6 +208,16 @@ describe('porpoising presets (target 7)', () => {
     expect(bounceModes(onset! - 1, LOW).unstable).toBe(false);
   });
 
+  it('reports the low set-up’s porpoising as a window that closes again, and none for the others', () => {
+    const w = porpoiseRangeKmh(LOW)!;
+    expect(w[0]).toBe(porpoiseOnsetKmh(LOW));
+    expect(w[1]).toBeGreaterThan(w[0]);
+    expect(bounceModes((w[0] + w[1]) / 2, LOW).unstable).toBe(true);
+    expect(bounceModes(w[1] + 2, LOW).unstable).toBe(false);
+    expect(porpoiseRangeKmh(DEFAULT_SETUP)).toBeNull();
+    expect(porpoiseRangeKmh(HIGH_RAKE)).toBeNull();
+  });
+
   it('the high-rake set-up is stable to 350 km/h', () => {
     expect(unstableSpeeds(HIGH_RAKE)).toEqual([]);
     expect(porpoiseOnsetKmh(HIGH_RAKE)).toBeNull();
@@ -234,17 +245,35 @@ describe('drag (target 8)', () => {
     }
   });
 
-  it('only exceeds that at the chart’s extreme corners, where the floor has lost its downforce', () => {
-    const g = aeroMapGrid(60, 60);
-    let lo = Infinity;
-    let hi = -Infinity;
-    for (let i = 0; i < g.cdA.length; i++) {
-      lo = Math.min(lo, g.cdA[i]);
-      hi = Math.max(hi, g.cdA[i]);
+  it('stays within −10 … +5 % of 1.1 m² on every slider set-up’s path to 350 km/h, and on the chart', () => {
+    // A whole-car drag-per-downforce ratio (GP2 map, Gadola 2022) keeps drag far flatter than downforce.
+    const within = (cdA: number) => {
+      expect(cdA / 1.1 - 1).toBeGreaterThan(-0.12);
+      expect(cdA / 1.1 - 1).toBeLessThan(0.05);
+    };
+    for (let f = SETUP_RANGE.frontMm[0]; f <= SETUP_RANGE.frontMm[1]; f += 5) {
+      for (let r = SETUP_RANGE.rearMm[0]; r <= SETUP_RANGE.rearMm[1]; r += 5) {
+        for (const p of platformSweep({ frontMm: f, rearMm: r }, 350, 10)) {
+          expect(p.point.cdA / 1.1 - 1).toBeGreaterThan(-0.1);
+          expect(p.point.cdA / 1.1 - 1).toBeLessThan(0.05);
+        }
+      }
     }
-    // Documented deviation from "< ±6 % over the chart": see AEROMAP.floor.dragPerDownforce.
-    expect(lo / 1.1 - 1).toBeGreaterThan(-0.25);
-    expect(hi / 1.1 - 1).toBeLessThan(0.07);
+    const g = aeroMapGrid(60, 60);
+    for (let i = 0; i < g.cdA.length; i++) within(g.cdA[i]);
+  });
+
+  it('keeps every slider set-up’s path from rest to 350 km/h on the chart', () => {
+    for (let f = SETUP_RANGE.frontMm[0]; f <= SETUP_RANGE.frontMm[1]; f += 5) {
+      for (let r = SETUP_RANGE.rearMm[0]; r <= SETUP_RANGE.rearMm[1]; r += 5) {
+        for (const p of platformSweep({ frontMm: f, rearMm: r }, 350, 10)) {
+          expect(p.dynamic.frontMm).toBeGreaterThanOrEqual(MAP_RANGE.frontMm[0]);
+          expect(p.dynamic.frontMm).toBeLessThanOrEqual(MAP_RANGE.frontMm[1]);
+          expect(p.dynamic.rearMm).toBeGreaterThanOrEqual(MAP_RANGE.rearMm[0]);
+          expect(p.dynamic.rearMm).toBeLessThanOrEqual(MAP_RANGE.rearMm[1]);
+        }
+      }
+    }
   });
 });
 

@@ -116,7 +116,8 @@ export function createAeroMapReadouts(): AeroMapReadouts {
       setBalRef(`${signed(v.frontSharePct - v.refFrontSharePct, 1)} pt vs reference`);
       setBalWeight(`weight ${Math.round(v.weightFrontPct)} % front`);
 
-      ride.value(`${fmtMm(v.dynamic.frontMm)} / ${fmtMm(v.dynamic.rearMm)}`);
+      // Signed: with the rear high, the reference plane extended to the front axle can dip below the road.
+      ride.value(`${signed(v.dynamic.frontMm, 0)} / ${signed(v.dynamic.rearMm, 0)}`.replace(/\+/g, ''));
       setRideSquat(`sunk ${fmtMm(v.setup.frontMm - v.dynamic.frontMm)} / ${fmtMm(v.setup.rearMm - v.dynamic.rearMm)} mm`);
       setPlank(v.bottoming ? 'plank on the road' : `plank ${fmtMm(v.plankClearanceMm)} mm clear`);
 
@@ -129,8 +130,13 @@ export function createAeroMapReadouts(): AeroMapReadouts {
 
       const b = v.bounce;
       bounce.value(b.unstable ? 'Porpoising' : 'Stable');
-      setMode(b.unstable ? `${one(b.frequencyHz)} Hz · ${one(b.amplitudeMm)} mm swing` : `ζ ${two(b.dampingRatio)} · ${one(b.frequencyHz)} Hz`);
-      setOnset(b.onsetKmh === null ? `no onset up to ${SPEED_RANGE_KMH.max} km/h` : `onset ${fmtKmh(b.onsetKmh)} km/h`);
+      // Non-breaking spaces keep each number with its unit when the narrow column wraps.
+      setMode(b.unstable ? `${one(b.frequencyHz)}\u00a0Hz · ${one(b.amplitudeMm)}\u00a0mm swing` : `ζ\u00a0${two(b.dampingRatio)} · ${one(b.frequencyHz)}\u00a0Hz`);
+      setOnset(
+        b.onsetKmh === null
+          ? `none up to ${SPEED_RANGE_KMH.max} km/h`
+          : `porpoises ${fmtKmh(b.onsetKmh)}–${fmtKmh(b.untilKmh ?? SPEED_RANGE_KMH.max)} km/h`,
+      );
 
       const nextState = `${v.floor.regime}|${b.unstable ? 'porpoise' : 'stable'}|${v.bottoming ? 'bottom' : 'clear'}`;
       if (nextState !== state) {

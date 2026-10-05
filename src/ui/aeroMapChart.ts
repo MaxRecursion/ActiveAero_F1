@@ -100,7 +100,7 @@ function buildData(): MapData {
   };
 }
 
-const fineAt = (d: MapData, field: ArrayLike<number>, f: number, r: number) =>
+const fineAt = (field: ArrayLike<number>, f: number, r: number) =>
   sampleGrid(field, FINE.nf, FINE.nr, ((f - F0) / (F1 - F0)) * (FINE.nf - 1), ((r - R0) / (R1 - R0)) * (FINE.nr - 1));
 const coarseAt = (field: ArrayLike<number>, f: number, r: number) =>
   sampleGrid(field, COARSE.nf, COARSE.nr, ((f - F0) / (F1 - F0)) * (COARSE.nf - 1), ((r - R0) / (R1 - R0)) * (COARSE.nr - 1));
@@ -145,7 +145,8 @@ export function createAeroMapChart(onSetup: (setup: RideHeights) => void): AeroM
   const rampTicks = h(
     'span',
     'am-scale-ticks',
-    ticks(CLA_SCALE.min, CLA_SCALE.max, CLA_SCALE.step).map((v) => {
+    // Every other step (2.0 · 2.8 · 3.6): the bar is short and five figures would run together.
+    [CLA_SCALE.min, (CLA_SCALE.min + CLA_SCALE.max) / 2, CLA_SCALE.max].map((v) => {
       const t = h('span', { class: 'am-scale-tick', text: v.toFixed(1) });
       t.style.left = `${(((v - CLA_SCALE.min) / (CLA_SCALE.max - CLA_SCALE.min)) * 100).toFixed(2)}%`;
       return t;
@@ -168,7 +169,7 @@ export function createAeroMapChart(onSetup: (setup: RideHeights) => void): AeroM
   let data: MapData | null = null;
   let w = 0;
   let ht = 0;
-  const pad = { l: 30, r: 10, t: 12, b: 20 };
+  const pad = { l: 30, r: 10, t: 20, b: 20 };
   const pw = () => w - pad.l - pad.r;
   const ph = () => ht - pad.t - pad.b;
   const x = (f: number) => pad.l + ((f - F0) / (F1 - F0)) * pw();
@@ -176,6 +177,8 @@ export function createAeroMapChart(onSetup: (setup: RideHeights) => void): AeroM
   const fAt = (px: number) => F0 + ((px - pad.l) / pw()) * (F1 - F0);
   const rAt = (py: number) => R1 - ((py - pad.t) / ph()) * (R1 - R0);
   const f1 = (n: number) => n.toFixed(1);
+  /** Ride height for the spoken summary, signed: the front can read below the road when the rear is high. */
+  const spokenMm = (mm: number) => `${Math.round(mm) < 0 ? 'minus ' : ''}${fmtMm(Math.abs(mm))} mm`;
   const text = (content: string, attrs: Record<string, string | number>) => s('text', attrs, [content]);
 
   /** Polyline in grid coordinates of a grid over MAP_RANGE → pixels, flat. */
@@ -232,7 +235,7 @@ export function createAeroMapChart(onSetup: (setup: RideHeights) => void): AeroM
       const r = R1 - (py + 0.5) * rPerPx;
       for (let qx = 0; qx < cw; qx++) {
         const f = F0 + (qx + 0.5) * fPerPx;
-        const t = clamp01((fineAt(d, d.fine.clA, f, r) - CLA_SCALE.min) / (CLA_SCALE.max - CLA_SCALE.min));
+        const t = clamp01((fineAt(d.fine.clA, f, r) - CLA_SCALE.min) / (CLA_SCALE.max - CLA_SCALE.min));
         const li = Math.round(t * 255) * 3;
         let cr = lut[li];
         let cg = lut[li + 1];
@@ -303,6 +306,8 @@ export function createAeroMapChart(onSetup: (setup: RideHeights) => void): AeroM
     // Axes: ticks and units outside the plot, a hairline frame.
     for (const f of ticks(F0, F1, 10)) {
       parts.push(s('line', { class: 'am-tick', x1: f1(x(f)), x2: f1(x(f)), y1: f1(ht - pad.b), y2: f1(ht - pad.b + 3) }));
+      // The last figure's place is taken by the axis name.
+      if (f === F1) continue;
       parts.push(text(String(f), { class: 'chart-tick', x: f1(x(f)), y: f1(ht - pad.b + 13), 'text-anchor': f === F0 ? 'start' : 'middle' }));
     }
     const rStep = ph() < 150 ? 40 : 20;
@@ -312,7 +317,8 @@ export function createAeroMapChart(onSetup: (setup: RideHeights) => void): AeroM
       parts.push(text(String(r), { class: 'chart-tick', x: f1(pad.l - 5), y: f1(y(r) + 3.5), 'text-anchor': 'end' }));
     }
     parts.push(s('rect', { class: 'am-frame', x: pad.l + 0.5, y: pad.t + 0.5, width: f1(pw() - 1), height: f1(ph() - 1) }));
-    parts.push(text('rear, mm', { class: 'chart-unit', x: f1(pad.l - 5), y: f1(pad.t - 3), 'text-anchor': 'end' }));
+    // Axis names sit clear of the figures: the rear's above the top-left corner, the front's in place of its last figure.
+    parts.push(text('rear, mm', { class: 'chart-unit', x: 2, y: f1(pad.t - 7), 'text-anchor': 'start' }));
     parts.push(text('front, mm', { class: 'chart-unit am-unit-x', x: f1(w - pad.r), y: f1(ht - pad.b + 13), 'text-anchor': 'end' }));
     placed.push({ x: w - pad.r - 20, y: ht - pad.b }, { x: pad.l, y: pad.t });
 
@@ -472,7 +478,7 @@ export function createAeroMapChart(onSetup: (setup: RideHeights) => void): AeroM
     const bounce = v.bounce.unstable ? `, porpoising at ${v.bounce.frequencyHz.toFixed(1)} hertz` : '';
     return (
       `Aero map, downforce coefficient against front and rear ride height. At ${fmtKmh(v.speedKmh)} km/h the car runs ` +
-      `${fmtMm(v.dynamic.frontMm)} mm front and ${fmtMm(v.dynamic.rearMm)} mm rear: ClA ${v.clA.toFixed(2)} square metres, ` +
+      `${spokenMm(v.dynamic.frontMm)} front and ${spokenMm(v.dynamic.rearMm)} rear: ClA ${v.clA.toFixed(2)} square metres, ` +
       `${v.frontSharePct.toFixed(1)} % of it on the front axle, ${floor}${v.bottoming ? ', plank on the road' : ''}${bounce}. ` +
       `Static set-up ${fmtMm(v.setup.frontMm)} / ${fmtMm(v.setup.rearMm)} mm.`
     );
@@ -481,10 +487,16 @@ export function createAeroMapChart(onSetup: (setup: RideHeights) => void): AeroM
   // ── dragging the set-up ───────────────────────────────────────────────────────────
   let dragId: number | null = null;
   let sent = '';
-  const toSetup = (e: PointerEvent): RideHeights => {
+  /** Where in the ring the pointer grabbed it (px), so the ring does not jump to the pointer. */
+  const grab = { dx: 0, dy: 0 };
+  const toPlot = (e: PointerEvent) => {
     const rect = svg.getBoundingClientRect();
-    const px = ((e.clientX - rect.left) / rect.width) * w;
-    const py = ((e.clientY - rect.top) / rect.height) * ht;
+    return { px: ((e.clientX - rect.left) / rect.width) * w, py: ((e.clientY - rect.top) / rect.height) * ht };
+  };
+  const toSetup = (e: PointerEvent): RideHeights => {
+    const { px: gx, py: gy } = toPlot(e);
+    const px = gx - grab.dx;
+    const py = gy - grab.dy;
     return {
       frontMm: Math.round(Math.min(SETUP_RANGE.frontMm[1], Math.max(SETUP_RANGE.frontMm[0], fAt(px)))),
       rearMm: Math.round(Math.min(SETUP_RANGE.rearMm[1], Math.max(SETUP_RANGE.rearMm[0], rAt(py)))),
@@ -500,6 +512,11 @@ export function createAeroMapChart(onSetup: (setup: RideHeights) => void): AeroM
     if (e.button !== 0) return;
     dragId = e.pointerId;
     sent = lastView ? `${lastView.setup.frontMm}|${lastView.setup.rearMm}` : '';
+    if (lastView) {
+      const { px, py } = toPlot(e);
+      grab.dx = px - x(lastView.setup.frontMm);
+      grab.dy = py - y(lastView.setup.rearMm);
+    }
     setupHit.setPointerCapture(e.pointerId);
     plot.classList.add('is-dragging');
     hideHover();
@@ -532,8 +549,8 @@ export function createAeroMapChart(onSetup: (setup: RideHeights) => void): AeroM
     if (px < pad.l || px > w - pad.r || py < pad.t || py > ht - pad.b) return hideHover();
     const f = fAt(px);
     const r = rAt(py);
-    const cla = fineAt(data, data.fine.clA, f, r);
-    const share = fineAt(data, data.fine.frontShare, f, r) * 100;
+    const cla = fineAt(data.fine.clA, f, r);
+    const share = fineAt(data.fine.frontShare, f, r) * 100;
     const ground = coarseAt(data.plank, f, r) <= 0;
     const stalled = coarseAt(data.eta, f, r) < data.stallEta;
     hoverLineX.setAttribute('x1', f1(px));
@@ -568,6 +585,8 @@ export function createAeroMapChart(onSetup: (setup: RideHeights) => void): AeroM
   function redrawAll() {
     if (!w || !ht || !lastView) return;
     data ??= buildData();
+    // The left margin depends on the width; set it before the heat map, which is drawn inside it.
+    pad.l = w < 360 ? 26 : 30;
     drawHeat();
     drawStatic();
     drawTrajectory();

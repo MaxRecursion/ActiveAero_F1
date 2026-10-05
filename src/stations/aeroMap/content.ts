@@ -96,26 +96,32 @@ function attached({ facts }: CaptionContext): CaptionRun[] {
     const plankFirst = facts.bottomKmh !== null && (facts.stallKmh === null || facts.bottomKmh < facts.stallKmh);
     const at = plankFirst ? facts.bottomKmh! : facts.stallKmh!;
     return [
-      { text: 'Downforce squashes the car on its springs, so it slides across the map. This set-up starts low: from about ' },
+      { text: 'Downforce squashes the car on its springs, and this set-up starts low: from about ' },
       { text: nb(fmtKmh(at), 'km/h'), tone: 'strong' },
-      plankFirst
-        ? { text: ' the plank under the floor touches the road.' }
-        : { text: ' the floor runs so close to the road that its diffuser stalls.' },
+      plankFirst ? { text: ' the plank touches the road.' } : { text: ' the diffuser stalls.' },
     ];
   }
   const gain = Math.round(facts.downforceGain * 100);
   const shift = Math.round(facts.balanceShiftPts * 10) / 10;
+  const balance =
+    shift === 0 ? ', balance unchanged.' : `, balance ${fmtRatio(Math.abs(shift))} ${Math.abs(shift) === 1 ? 'point' : 'points'} ${shift > 0 ? 'forward' : 'back'}.`;
+  const sunk = { text: `${nb(mm(facts.squatFrontMm), 'mm')} front, ${nb(mm(facts.squatRearMm), 'mm')} rear`, tone: 'strong' as const };
+  if (gain < 0) {
+    // Static heights already near the floor's best: sinking takes it past its peak.
+    return [
+      { text: `By ${nb(fmtKmh(QUOTE_KMH), 'km/h')} the springs let it sink ` },
+      sunk,
+      { text: ', past the floor’s best height: ' },
+      { text: `${nb(fmtPct(-gain), '%')} less downforce`, tone: 'down' },
+      { text: ` than at rest${balance}` },
+    ];
+  }
   return [
-    { text: `Downforce squashes the car on its springs. By ${nb(fmtKmh(QUOTE_KMH), 'km/h')} it sits ` },
-    { text: `${nb(mm(facts.squatFrontMm), 'mm')} lower at the front and ${nb(mm(facts.squatRearMm), 'mm')} at the rear`, tone: 'strong' },
+    { text: `By ${nb(fmtKmh(QUOTE_KMH), 'km/h')} the springs let it sink ` },
+    sunk,
     { text: '. Nearer the road the floor sucks harder: ' },
-    { text: `${nb(fmtPct(Math.abs(gain)), '%')} ${gain >= 0 ? 'more' : 'less'} downforce`, tone: 'down' },
-    {
-      text:
-        shift === 0
-          ? ' than at the static heights, and the balance barely moves.'
-          : ` than at the static heights, and the balance moves ${fmtRatio(Math.abs(shift))} ${Math.abs(shift) === 1 ? 'point' : 'points'} ${shift > 0 ? 'forward' : 'rearward'}.`,
-    },
+    { text: `${nb(fmtPct(gain), '%')} more downforce`, tone: 'down' },
+    { text: balance },
   ];
 }
 
@@ -128,35 +134,35 @@ export function captionFor(ctx: CaptionContext): CaptionRun[] {
         { text: `${nb(mm(facts.setup.frontMm), 'mm')} front, ${nb(mm(facts.setup.rearMm), 'mm')} rear`, tone: 'strong' },
         { text: '. An aero map charts ' },
         { text: 'downforce', tone: 'down' },
-        { text: ' against those two ride heights. Add speed and watch the car settle across it.' },
+        { text: ' against these two ride heights. Add speed.' },
       ];
     case 'peak':
       return [
         { text: 'The floor is at its ' },
         { text: 'most powerful height', tone: 'down' },
-        { text: ': the gap at the diffuser inlet is close to the one that sucks hardest. Little margin: a few millimetres lower and the flow lets go.' },
+        { text: '. Little margin: a few millimetres lower and the diffuser’s flow lets go.' },
       ];
     case 'stalled':
       return [
         { text: 'Too low: the diffuser’s flow ' },
         { text: 'separates', tone: 'strong' },
-        { text: ', so the floor ' },
+        { text: ' and the floor ' },
         { text: 'loses downforce', tone: 'down' },
-        { text: ' as the car sinks further. Raise the ride heights, or slow down.' },
+        { text: ' as the car sinks. Raise the ride heights, or slow down.' },
       ];
     case 'porpoising': {
-      const drawn = ctx.bounceDrawn > 1 ? ` (drawn ${ctx.bounceDrawn} times bigger)` : '';
+      const drawn = ctx.bounceDrawn > 1 ? ` (drawn ${ctx.bounceDrawn}× bigger)` : ctx.bounceDrawn === 0 ? ' (not animated)' : '';
       return [
         { text: 'Porpoising', tone: 'strong' },
-        { text: ': below its peak the floor sucks harder as the car rises, and its flow answers a moment late, so each push feeds the bounce faster than the dampers soak it up. The car bounces at about ' },
+        { text: ' at ' },
         { text: nb(fmtRatio(roundHz(ctx.bounceHz)), 'Hz'), tone: 'strong' },
-        { text: `${drawn}. This is what hit cars in 2022; 2026 floors are designed to avoid it.` },
+        { text: `${drawn}: the stalling floor pulls a moment late, so each bounce feeds the next faster than the dampers kill it.` },
       ];
     }
     case 'bottoming':
       return [
         { text: 'Bottoming', tone: 'strong' },
-        { text: ': the plank under the floor is on the road. The ground now holds the car up, the floor can get no closer, and the plank wears.' },
+        { text: ': the plank is on the road. The ground now holds the car up, and the plank wears away.' },
       ];
     case 'attached':
     default:

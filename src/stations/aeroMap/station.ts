@@ -26,7 +26,7 @@ import {
   floorPressure,
   platformAt,
   platformSweep,
-  porpoiseOnsetKmh,
+  porpoiseRangeKmh,
   REFERENCE_RIDE,
   RIDE_PRESETS,
   SETUP_RANGE,
@@ -36,10 +36,21 @@ import {
 } from '../../physics/aeromap';
 import { ESTIMATES, PHYS, REGS, SPEED_RANGE_KMH } from '../../physics/constants';
 import { prefersReducedMotion, type Shot } from '../../scene/stage';
-import type { CaptionRun, RideHeights, Station6View, StationUIConfig, StationView } from '../../ui/types';
+import type { CaptionRun, RideHeights, SpeedPreset, Station6View, StationUIConfig, StationView } from '../../ui/types';
 import type { Station, StationContext } from '../types';
-import { PRESETS } from '../downforce/content';
 import { bandOf, captionFor, captionKey, setupFacts, type CaptionContext, type SetupFacts } from './content';
+
+/**
+ * Speed presets: the shared corners and straights, with the hairpin (where the air does little) swapped
+ * for a long straight at 290 km/h — inside the low set-up's porpoising window, which is only ≈ 16 km/h wide.
+ */
+export const AERO_MAP_PRESETS: SpeedPreset[] = [
+  { kmh: 0, label: 'Parked' },
+  { kmh: 150, label: 'Medium corner' },
+  { kmh: 250, label: 'Fast corner' },
+  { kmh: 290, label: 'Long straight' },
+  { kmh: 330, label: 'End of straight' },
+];
 
 /** The 3D view draws ride heights to scale (the view's rideExaggeration). */
 export const RIDE_EXAGGERATION = 1;
@@ -55,25 +66,29 @@ const SHOWN_EPS_MM = 1e-4;
 const MM = 1e-3;
 
 /**
- * Low, from the car's right and a little behind its middle, aimed under the floor: the gap under the
- * floor, the rake and the bounce read against the road, and the force arrows and balance pointer stay
- * in frame above the dock.
+ * A front three-quarter from the car's right, aimed behind the rear axle so the car sits in the right of
+ * the free area, clear of the header and the caption on the left: the rake, the squat and the bounce read
+ * against the rolling road, and the force arrows and the balance pointer on the rail stay in frame above
+ * the tall dock.
  */
-const SHOT: Shot = { position: [-1.2, 0.62, 8.6], target: [-0.15, 0.42, 0] };
+const SHOT: Shot = { position: [4.6, 1.55, 10.2], target: [-1.1, 0.95, 0] };
+/** Phones (the single-column sheet, as ui.css): no room beside the car, so aim at its middle. */
+const SHOT_NARROW: Shot = { position: [10.4, 3.1, 15.6], target: [-0.3, 0.5, 0] };
+const NARROW_QUERY = '(max-width: 719.98px)';
 
 export const AERO_MAP_CONFIG: StationUIConfig = {
   meta: {
     id: 'aeroMap',
     number: '06',
     title: 'Aero map',
-    prompt: 'Set the ride heights. Add speed. Watch the car settle across the map, until the floor stalls.',
+    prompt: 'Set the ride heights. Add speed. Find where the floor stalls.',
   },
-  presets: PRESETS,
+  presets: AERO_MAP_PRESETS,
   toggles: ['airflow'],
   conditions:
     `ISA sea level · ${REGS.minMassKg.value} kg · axle rates ${ESTIMATES.brakes.frontAxleRateNPerMm}/` +
     `${ESTIMATES.brakes.rearAxleRateNPerMm} N/mm est. · map from wind-tunnel ground-effect data, scaled (est.) · ` +
-    `ride heights to scale, bounce drawn ${BOUNCE_DRAWN}×`,
+    `ride heights to scale, bounce drawn ${BOUNCE_DRAWN}× (still with reduced motion)`,
 };
 
 /** Clamp to the sliders' range and round to their 1 mm step. */
@@ -93,12 +108,12 @@ export function createAeroMapStation({ garage, ui }: StationContext): Station {
   // ── per set-up ─────────────────────────────────────────────────────────────────
   let setupVersion = 0;
   let trajectory: Station6View['trajectory'] = [];
-  let onsetKmh: number | null = null;
+  let range: [number, number] | null = null;
   let facts!: SetupFacts;
   function recomputeSetup() {
     const sweep = platformSweep(setup, SPEED_RANGE_KMH.max, SWEEP_STEP_KMH);
     trajectory = sweep.map((p) => ({ kmh: p.speedKmh, frontMm: p.dynamic.frontMm, rearMm: p.dynamic.rearMm }));
-    onsetKmh = porpoiseOnsetKmh(setup);
+    range = porpoiseRangeKmh(setup);
     facts = setupFacts(setup, sweep);
     setupVersion++;
   }
@@ -129,7 +144,8 @@ export function createAeroMapStation({ garage, ui }: StationContext): Station {
 
   let caption: CaptionRun[] = [];
   let captionWas = '';
-  const captionCtx: CaptionContext = { band: 'parked', facts, bounceHz: 0, bounceDrawn: BOUNCE_DRAWN };
+  // With reduced motion the car is drawn at rest on its springs: nothing bounces, so nothing is "drawn bigger".
+  const captionCtx: CaptionContext = { band: 'parked', facts, bounceHz: 0, bounceDrawn: reducedMotion ? 0 : BOUNCE_DRAWN };
 
   const view: Station6View = {
     speedKmh: 0,
@@ -150,7 +166,7 @@ export function createAeroMapStation({ garage, ui }: StationContext): Station {
     pressure,
     plankClearanceMm: 0,
     bottoming: false,
-    bounce: { unstable: false, frequencyHz: 0, dampingRatio: 1, amplitudeMm: 0, onsetKmh: null },
+    bounce: { unstable: false, frequencyHz: 0, dampingRatio: 1, amplitudeMm: 0, onsetKmh: null, untilKmh: null },
     rideExaggeration: RIDE_EXAGGERATION,
     presets: RIDE_PRESETS,
     caption,
@@ -217,7 +233,7 @@ export function createAeroMapStation({ garage, ui }: StationContext): Station {
 
   const station: Station = {
     config: AERO_MAP_CONFIG,
-    shot: () => SHOT,
+    shot: () => (window.matchMedia?.(NARROW_QUERY).matches ? SHOT_NARROW : SHOT),
     sweep: { from: 0, to: 340 },
     intro: { kmh: 250, belowKmh: 1 },
     enter() {
@@ -286,16 +302,20 @@ export function createAeroMapStation({ garage, ui }: StationContext): Station {
       view.dragN = aero.dragN;
       view.efficiency = point.clA / point.cdA;
       view.frontSharePct = point.frontShare * 100;
-      view.floor.regime = point.floor.regime;
+      // The floor's state and the plank are read at the equilibrium the car bounces about: while it
+      // porpoises the instant ride heights cross the stall's edge many times a second, and the words
+      // would flicker. The gap is the instant one.
+      view.floor.regime = platform.point.floor.regime;
       view.floor.throatGapMm = point.floor.throatGapMm;
       view.floor.peakGapMm = point.floor.peakGapMm;
-      view.plankClearanceMm = Math.max(0, point.plankClearanceMm);
-      view.bottoming = platform.bottoming || point.plankClearanceMm <= 0;
+      view.plankClearanceMm = Math.max(0, platform.plankClearanceMm);
+      view.bottoming = platform.bottoming;
       view.bounce.unstable = mode.unstable;
       view.bounce.frequencyHz = mode.frequencyHz;
       view.bounce.dampingRatio = mode.dampingRatio;
       view.bounce.amplitudeMm = sim.amplitudeMm;
-      view.bounce.onsetKmh = onsetKmh;
+      view.bounce.onsetKmh = range ? range[0] : null;
+      view.bounce.untilKmh = range ? range[1] : null;
       updateCaption();
       view.caption = caption;
       ui.render(out);

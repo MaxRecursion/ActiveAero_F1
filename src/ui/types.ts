@@ -319,6 +319,11 @@ export interface Station6View {
     amplitudeMm: number;
     /** Lowest speed at which this set-up porpoises, or null if it never does in the speed range. */
     onsetKmh: number | null;
+    /**
+     * Where that porpoising window ends again (the stall side flattens, or the plank lands), km/h; null with
+     * no onset. The window is narrow: a set-up porpoises only while its floor sits on the stall's drop.
+     */
+    untilKmh: number | null;
   };
   /** How many times bigger the 3D view draws ride-height changes. */
   rideExaggeration: number;

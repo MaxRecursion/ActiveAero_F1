@@ -93,7 +93,8 @@ const toggles: Record<ToggleId, boolean> = {
   brakes: params.get('brakes') !== '0',
 };
 const stationParam = params.get('station');
-type HarnessStationId = Exclude<StationId, 'tow'>;
+/** The stations this harness can fake a view for (Station 5 and 6 are checked in the real app). */
+type HarnessStationId = Exclude<StationId, 'tow' | 'aeroMap'>;
 let station: HarnessStationId = STATIONS.find((c) => c.meta.id === stationParam)?.meta.id as HarnessStationId ?? 'downforce';
 const clampBrakeFrom = (kmh: number) => Math.min(BRAKE_FROM_KMH.max, Math.max(BRAKE_FROM_KMH.min, Math.round(kmh)));
 let speed = station === 'braking' ? clampBrakeFrom(num('speed', 300)) : num('speed', 300);
@@ -361,6 +362,7 @@ const ui = createUI({
       }
     },
     onTowGapInput() {},
+    onRideHeightInput() {},
     onSoundToggle() {},
     onThemeChange() {},
     onLiveryChange() {},
@@ -382,7 +384,7 @@ const ui = createUI({
       void stage.goTo('hero');
     },
     onStationChange(id) {
-      if (id === 'tow') return;
+      if (id === 'tow' || id === 'aeroMap') return;
       station = id;
       ui.setStation(id);
       if (id === 'braking') {
