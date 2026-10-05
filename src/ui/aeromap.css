@@ -1,0 +1,481 @@
+/*
+ * Station 06 · Aero map — the static ride heights under the speed slider (zone A), the readouts and
+ * the pressure under the floor (zone B), and the aero map itself (zone C). Same spec-sheet language
+ * as ui.css; loaded after brake.css.
+ *
+ * Colour: blue is downforce (the map's ramp is one blue hue, more is darker on paper and brighter
+ * on the dark theme), graphite is the car (its set-up, its path, where it is now), hatching is a
+ * stalled floor, grey is the plank on the road, and red (--warn) is reserved for trouble:
+ * porpoising, a stalled floor, the plank touching. Breakpoints mirror ui.css (and createUI.ts).
+ */
+
+:root {
+  /* Sequential ramp for ClA, low → high (OKLab-interpolated in aeroMapChart.ts). */
+  --am-ramp-0: #eceef2;
+  --am-ramp-1: #bccaf3;
+  --am-ramp-2: #7594f4;
+  --am-ramp-3: #2d5be8;
+  --am-ramp-4: #142d86;
+  --am-hatch: #16181d;
+  --am-hatch-alpha: 0.42;
+  --am-plank: #d5d2cb;
+  --am-contour: rgb(22 24 29 / 0.26);
+  --am-contour-major: rgb(22 24 29 / 0.45);
+}
+:root[data-theme='dark'] {
+  --am-ramp-0: #2a2e36;
+  --am-ramp-1: #263a72;
+  --am-ramp-2: #2c56cc;
+  --am-ramp-3: #5d86ff;
+  --am-ramp-4: #c6d3ff;
+  --am-hatch: #f1f0eb;
+  --am-hatch-alpha: 0.34;
+  --am-plank: #3b3e44;
+  --am-contour: rgb(241 240 235 / 0.22);
+  --am-contour-major: rgb(241 240 235 / 0.4);
+}
+
+/* ── dock layout: the map gets the widest column ─────────────────────────────── */
+
+.ui-dock[data-station='aeroMap'] {
+  grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr) minmax(0, 1.5fr);
+}
+
+/* The speed scale's one marker: where this set-up starts to porpoise. Red, not drag-orange. */
+.ui-dock[data-station='aeroMap'] .scale-marker--drag { --c: var(--warn); }
+.ui-dock[data-station='aeroMap']:not([data-onset='yes']) .scale-marker { display: none; }
+
+/* ── zone A: static ride heights ─────────────────────────────────────────────── */
+
+.rh-control {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: auto;
+  padding-top: 9px;
+  border-top: 1px solid var(--rule);
+}
+.rh-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 1px;
+}
+.rh-aside {
+  font: 400 11px/1.2 var(--font-ui);
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+.rh-row {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) 50px;
+  align-items: center;
+  gap: 8px;
+  height: 24px;
+}
+.rh-name { font: 500 12.5px/1 var(--font-ui); color: var(--ink-2); cursor: pointer; }
+.rh-val {
+  font: 500 14px/1 var(--font-num);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+.rh-unit { font-size: 10.5px; color: var(--ink-2); }
+
+/* A smaller twin of the speed slider: hairline track, ink fill, paper thumb with a centre line. */
+.rh-input {
+  --thumb-w: 14px;
+  --thumb-h: 20px;
+  width: 100%;
+  height: var(--thumb-h);
+  margin: 0;
+  background: transparent;
+  -webkit-appearance: none;
+  appearance: none;
+  cursor: pointer;
+  touch-action: pan-y;
+}
+.rh-input:focus-visible { outline: none; }
+.rh-input::-webkit-slider-runnable-track {
+  height: 3px;
+  border-radius: 2px;
+  background: linear-gradient(
+    to right,
+    var(--ink) 0 calc(var(--thumb-w) / 2 + (100% - var(--thumb-w)) * var(--p, 0)),
+    var(--rule-strong) 0
+  );
+}
+.rh-input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  box-sizing: border-box;
+  width: var(--thumb-w);
+  height: var(--thumb-h);
+  margin-top: calc(1.5px - var(--thumb-h) / 2);
+  border: 1.5px solid var(--ink);
+  border-radius: 3px;
+  background: var(--paper) linear-gradient(var(--ink), var(--ink)) center / 1.5px 9px no-repeat;
+  box-shadow: 0 2px 6px -3px rgb(22 24 29 / 0.5);
+}
+.rh-input:focus-visible::-webkit-slider-thumb { outline: 2px solid var(--down); outline-offset: 2px; }
+.rh-input::-moz-range-track { height: 3px; border-radius: 2px; background: var(--rule-strong); }
+.rh-input::-moz-range-progress { height: 3px; border-radius: 2px; background: var(--ink); }
+.rh-input::-moz-range-thumb {
+  box-sizing: border-box;
+  width: var(--thumb-w);
+  height: var(--thumb-h);
+  border: 1.5px solid var(--ink);
+  border-radius: 3px;
+  background: var(--paper) linear-gradient(var(--ink), var(--ink)) center / 1.5px 9px no-repeat;
+}
+.rh-input:focus-visible::-moz-range-thumb { outline: 2px solid var(--down); outline-offset: 2px; }
+
+.rh-presets {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, auto);
+  justify-content: start;
+  gap: 4px;
+  margin-top: 3px;
+}
+.rh-chip {
+  min-width: 0;
+  height: 26px;
+  padding: 0 9px;
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius);
+  background: transparent;
+  font: 500 12px/1 var(--font-ui);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--ink);
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s, border-color 0.15s;
+}
+.rh-chip:hover { background: var(--paper-2); border-color: var(--ink-2); }
+.rh-chip[aria-pressed='true'] { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+
+/* ── zone B: readouts ────────────────────────────────────────────────────────── */
+
+.ro-grid--amap {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-areas:
+    'down  down  down  bal    bal    bal'
+    'ride  ride  floor floor  bounce bounce'
+    'fp    fp    fp    fp     fp     fp';
+  gap: 10px 14px;
+}
+.amr-down { grid-area: down; }
+.amr-bal { grid-area: bal; }
+.amr-ride { grid-area: ride; }
+.amr-floor { grid-area: floor; }
+.amr-bounce { grid-area: bounce; }
+.fp { grid-area: fp; }
+
+.amr-down .ro-num { font-size: 36px; }
+.amr-bal .ro-num { font-size: 28px; }
+.amr-ride .ro-num { font-size: 19px; }
+.amr-ride .swatch,
+.amr-floor .swatch,
+.amr-bounce .swatch { display: none; }
+/* Words, not numbers: the condensed face keeps "At its peak" inside a third of the column. */
+.amr-floor .ro-num,
+.amr-bounce .ro-num {
+  font: 600 17px/1 var(--font-ui);
+  letter-spacing: 0;
+}
+.ro-grid--amap .ro-sub { font-size: 12px; line-height: 1.3; }
+.amr-down .ro-sub { margin-top: 2px; font-size: 13px; }
+.amr-cla { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 3px; }
+.amr-strong { font: 500 13px/1 var(--font-num); font-variant-numeric: tabular-nums; color: var(--ink); }
+.amr-drag { color: color-mix(in oklab, var(--drag) 85%, #000); }
+.amr-sep { color: var(--ink-3); }
+.amr-chip { margin-left: 5px; }
+.amr-bal .ro-sub-1 { font-weight: 600; color: var(--ink); }
+
+/* Trouble reads red, with the word saying what it is. */
+.zone-read--amap[data-floor='stalled'] .amr-floor .ro-num,
+.zone-read--amap[data-bounce='porpoising'] .amr-bounce .ro-num,
+.zone-read--amap[data-plank='down'] .amr-ride .ro-sub-2 { color: var(--warn); }
+.zone-read--amap[data-plank='down'] .amr-ride .ro-sub-2 { font-weight: 600; }
+.zone-read--amap[data-floor='peak'] .amr-floor .ro-num { color: var(--down); }
+
+/* The pressure under the floor. */
+.fp {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding-top: 8px;
+  border-top: 1px solid var(--rule);
+}
+.fp-title { display: flex; justify-content: space-between; gap: 8px; }
+.fp-aside { font: 400 11px/1.2 var(--font-ui); letter-spacing: 0; text-transform: none; color: var(--ink-3); }
+.fp-plot { position: relative; height: 82px; }
+.fp-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  font-family: var(--font-num);
+}
+.fp-diffuser { fill: var(--paper-2); }
+.fp-diffuser-label { font: 600 8.5px var(--font-ui); letter-spacing: 0.1em; text-transform: uppercase; }
+.fp-tick { stroke: var(--ink-3); stroke-width: 1; }
+.fp-area { fill: var(--down); fill-opacity: 0.16; }
+.fp-line { fill: none; stroke: var(--down); stroke-width: 1.75; stroke-linejoin: round; }
+.fp-hatch { stroke: var(--ink-2); stroke-width: 1.1; }
+.fp-sep { opacity: 0.55; }
+.fp-sep-edge { stroke: var(--warn); stroke-width: 1.25; stroke-dasharray: 2 2; }
+.fp-sep-label {
+  font: 600 8.5px var(--font-ui);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  fill: var(--warn);
+}
+.fp-peak { fill: var(--down); stroke: var(--paper); stroke-width: 1.5; }
+.fp-peak-label { font-size: 10px; font-weight: 500; fill: var(--down); }
+.fp-sep-label,
+.fp-peak-label,
+.fp-diffuser-label {
+  paint-order: stroke;
+  stroke: var(--paper);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+
+/* ── zone C: the aero map ────────────────────────────────────────────────────── */
+
+.am-legend { flex-wrap: wrap; align-items: center; gap: 4px 12px; }
+.am-scale { display: inline-flex; align-items: center; gap: 6px; }
+.am-scale-name { font: 500 11.5px/1 var(--font-ui); color: var(--ink-2); }
+.am-scale-body { position: relative; display: inline-block; width: 104px; height: 21px; }
+.am-scale-bar {
+  position: absolute;
+  inset: 1px 0 auto;
+  height: 8px;
+  border-radius: 1px;
+  box-shadow: inset 0 0 0 1px var(--rule);
+}
+.am-scale-ticks { position: absolute; inset: 12px 0 auto; }
+.am-scale-tick {
+  position: absolute;
+  transform: translateX(-50%);
+  font: 400 9.5px/1 var(--font-num);
+  color: var(--ink-3);
+}
+.am-scale-tick:first-child { transform: none; }
+.am-scale-tick:last-child { transform: translateX(-100%); }
+.am-key--balance .legend-key { border-top: 1.5px dashed var(--ink-2); }
+.am-key--stall .legend-key {
+  height: 10px;
+  border: 0;
+  background: repeating-linear-gradient(135deg, var(--ink-2) 0 1px, transparent 1px 4px);
+  box-shadow: inset 0 0 0 1px var(--rule-strong);
+}
+
+.am-plot {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 200px;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.am-heat { position: absolute; display: block; }
+.am-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  font-family: var(--font-num);
+}
+.am-frame { fill: none; stroke: var(--rule-strong); }
+.am-tick { stroke: var(--rule-strong); }
+.am-contour { fill: none; stroke: var(--am-contour); stroke-width: 0.8; }
+.am-contour--major { stroke: var(--am-contour-major); stroke-width: 1; }
+.am-balance { fill: none; stroke: var(--ink); stroke-opacity: 0.55; stroke-width: 1; stroke-dasharray: 4 3; }
+.am-stall { fill: none; stroke: var(--ink); stroke-width: 1.4; }
+.am-plank { fill: none; stroke: var(--ink-2); stroke-width: 1.2; }
+.am-ref { stroke: var(--ink); stroke-width: 1.5; }
+.am-contour-label,
+.am-balance-label,
+.am-ref-label,
+.am-path-label { font-size: 9.5px; fill: var(--ink-2); }
+.am-contour-label { fill: var(--ink); }
+.am-path-label { font-weight: 500; fill: var(--ink); }
+.am-stall-label,
+.am-plank-label,
+.am-setup-label {
+  font: 600 8.5px var(--font-ui);
+  letter-spacing: 0.1em;
+  fill: var(--ink);
+}
+.am-plank-label { fill: var(--ink-2); }
+.am-setup-label { text-transform: uppercase; dominant-baseline: central; pointer-events: none; }
+/* A paper halo keeps every label legible over the colours and the lines. */
+.am-contour-label,
+.am-balance-label,
+.am-ref-label,
+.am-path-label,
+.am-stall-label,
+.am-plank-label,
+.am-setup-label {
+  paint-order: stroke;
+  stroke: var(--paper);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+
+/* The car's path from 0 to 350 km/h, the set-up ring, the car now. */
+.am-path-halo { fill: none; stroke: var(--paper); stroke-opacity: 0.8; stroke-width: 4.5; stroke-linejoin: round; stroke-linecap: round; }
+.am-path { fill: none; stroke: var(--ink); stroke-width: 1.75; stroke-linejoin: round; stroke-linecap: round; }
+.am-path-tick { fill: var(--paper); stroke: var(--ink); stroke-width: 1.5; }
+.am-setup { fill: rgb(255 255 255 / 0.001); stroke: var(--ink); stroke-width: 2.25; }
+.am-setup-group:hover .am-setup,
+.am-plot.is-dragging .am-setup { stroke-width: 3; }
+.am-setup-hit { fill: transparent; pointer-events: all; cursor: grab; touch-action: none; }
+.am-plot.is-dragging,
+.am-plot.is-dragging .am-setup-hit { cursor: grabbing; }
+/* Where the static set-up may go, shown while you reach for it. */
+.am-range { fill: none; stroke: var(--ink); stroke-opacity: 0.55; stroke-dasharray: 3 3; visibility: hidden; pointer-events: none; }
+.am-plot.is-dragging .am-range,
+.am-plot:has(.am-setup-hit:hover) .am-range { visibility: visible; }
+.am-now { fill: var(--ink); stroke: var(--paper); stroke-width: 2; }
+.am-pulse {
+  fill: none;
+  stroke: var(--warn);
+  stroke-width: 2;
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.am-plot[data-state='porpoising'] .am-now { fill: var(--warn); }
+.am-plot[data-state='porpoising'] .am-pulse { animation: am-pulse 0.8s ease-out infinite; }
+.am-plot[data-state='bottoming'] .am-now { fill: var(--warn); }
+@keyframes am-pulse {
+  from { opacity: 0.9; transform: scale(1); }
+  to { opacity: 0; transform: scale(2.8); }
+}
+/* With reduced motion the ring holds still, but still says "porpoising". */
+@media (prefers-reduced-motion: reduce) {
+  .am-plot[data-state='porpoising'] .am-pulse { animation: none; opacity: 0.8; transform: scale(1.9); }
+}
+
+/* Hover read-out (mouse only). */
+.am-hover { pointer-events: none; }
+.am-hover-line { stroke: var(--ink); stroke-opacity: 0.4; stroke-dasharray: 2 2; }
+.am-hover-box { fill: var(--ink); fill-opacity: 0.94; }
+.am-hover-text { font-size: 10.5px; fill: var(--paper); }
+.am-hover-text--strong { font-weight: 500; }
+
+/* ── tablet ──────────────────────────────────────────────────────────────────── */
+
+@media (max-width: 899.98px) {
+  .ui-dock[data-station='aeroMap'] { grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); }
+  .am-plot { min-height: 230px; }
+}
+
+/* ── short screens: compact dock ─────────────────────────────────────────────── */
+
+@media (max-height: 760px) and (min-height: 600.02px) and (min-width: 720px) {
+  .rh-control { gap: 2px; padding-top: 6px; }
+  .rh-aside { display: none; }
+  .rh-row { height: 22px; }
+  .rh-chip { height: 24px; }
+  .ro-grid--amap { gap: 6px 12px; }
+  .amr-down .ro-num { font-size: 28px; }
+  .amr-bal .ro-num { font-size: 22px; }
+  .amr-ride .ro-num { font-size: 17px; }
+  .amr-floor .ro-num,
+  .amr-bounce .ro-num { font-size: 15px; }
+  .ro-grid--amap .ro-sub { font-size: 11.5px; }
+  .amr-down .ro-sub { font-size: 12px; }
+  .amr-bal .ro-sub-2,
+  .amr-ride .ro-sub-1 { display: none; }
+  .fp { padding-top: 5px; gap: 2px; }
+  .fp-plot { height: 62px; }
+  .am-plot { min-height: 150px; }
+}
+
+/* ── phone sheet (and every screen ≤ 600 px tall) ─────────────────────────────── */
+
+@media (max-width: 719.98px), (max-height: 600px) {
+  .ui-dock[data-station='aeroMap'] { grid-template-columns: minmax(0, 1fr); }
+  /* One toggle: it joins Graph on the speed row, as on Station 2. */
+  .ui-dock[data-station='aeroMap'] .strip-controls {
+    display: flex;
+    position: absolute;
+    top: 12px;
+    right: 16px;
+    gap: 6px;
+  }
+  .ui-dock[data-station='aeroMap'] .toggles { display: flex; }
+  .ui-dock[data-station='aeroMap'] .drawer-btns { position: static; }
+  /* The map takes the numbers' place rather than stacking under them. */
+  .ui-dock[data-station='aeroMap'].is-graph-open .zone-read { display: none; }
+
+  .rh-control { gap: 2px; margin-top: 4px; padding-top: 7px; }
+  .rh-aside { display: none; }
+  .rh-row { height: 26px; grid-template-columns: 36px minmax(0, 1fr) 48px; }
+  .rh-input { --thumb-w: 18px; --thumb-h: 26px; }
+  .rh-presets { grid-auto-columns: minmax(0, 1fr); justify-content: stretch; }
+  .rh-chip { height: 30px; padding: 0 6px; }
+
+  .ro-grid--amap {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    grid-template-areas:
+      'down  down  down  bal    bal    bal'
+      'ride  ride  floor floor  bounce bounce';
+    gap: 8px 12px;
+  }
+  .amr-down .ro-num,
+  .amr-bal .ro-num { font-size: 22px; }
+  .amr-ride .ro-num { font-size: 16px; }
+  .amr-floor .ro-num,
+  .amr-bounce .ro-num { font-size: 15px; }
+  .ro-grid--amap .ro-sub,
+  .amr-down .ro-sub { font-size: 11.5px; }
+  .amr-dragline,
+  .amr-bal .ro-sub-2,
+  .amr-ride .ro-sub-1,
+  .amr-floor .ro-sub-2,
+  .amr-bounce .ro-sub-1,
+  .fp { display: none; }
+  .amr-chip { margin-left: 0; }
+  .am-plot { min-height: 230px; }
+  .ui-dock.is-graph-open .zone-amap { padding-top: 0; border-top: 0; }
+}
+
+/* ── compact: ≤ 600 px tall — readouts and map are drawers ─────────────────────── */
+
+@media (max-height: 600px) {
+  .rh-control { margin-top: 0; padding-top: 6px; }
+  .rh-row { height: 22px; }
+  .rh-input { --thumb-w: 16px; --thumb-h: 22px; }
+  .rh-chip { height: 26px; }
+  /* The numbers drawer has room for everything, the pressure plot included. */
+  .ro-grid--amap {
+    grid-template-areas:
+      'down  down  down  bal    bal    bal'
+      'ride  ride  floor floor  bounce bounce'
+      'fp    fp    fp    fp     fp     fp';
+  }
+  .amr-dragline,
+  .amr-floor .ro-sub-2,
+  .amr-bounce .ro-sub-1,
+  .fp { display: flex; }
+  .amr-floor .ro-sub-2,
+  .amr-bounce .ro-sub-1 { display: block; }
+  .fp-plot { height: 64px; }
+  .ui-dock.is-graph-open .zone-amap { height: min(300px, var(--drawer-max, 300px)); }
+  .ui-dock[data-station] .am-plot { min-height: 0; }
+}
+
+/* Side panel: drawers fly out to the left; the map gets a wider one. */
+@media (max-height: 600px) and (min-width: 640px) and (min-aspect-ratio: 3/2) {
+  .ui-dock.is-graph-open .zone-amap { width: min(470px, calc(100vw - 100% - 44px)); }
+  .ui-dock.is-numbers-open .zone-read--amap { width: min(400px, calc(100vw - 100% - 44px)); }
+}

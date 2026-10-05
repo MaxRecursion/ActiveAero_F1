@@ -17,6 +17,7 @@ import './ui.css';
 import './about.css';
 import './energy.css';
 import './brake.css';
+import './aeromap.css';
 
 import type { Insets } from '../scene/stage';
 import type { AeroMode, BrakeState, Station5View, StationId, StationUIConfig, ToggleId, UI, UIOptions } from './types';
@@ -25,6 +26,8 @@ import { fmtKmh, fmtKmhAtLeast } from './format';
 import { icon, type IconName } from './icons';
 import { createAbout } from './about';
 import { createAeroReadouts } from './aeroReadouts';
+import { createAeroMapChart } from './aeroMapChart';
+import { createAeroMapReadouts } from './aeroMapReadouts';
 import { createBrakeChart } from './brakeChart';
 import { createBrakeControl } from './brakeControl';
 import { brakeAction, type BrakeAction } from './brakeMath';
@@ -37,6 +40,7 @@ import { createLiverySwitch } from './liverySwitch';
 import { createModeSwitch } from './modeSwitch';
 import { createPowerChart } from './powerChart';
 import { createReadouts } from './readouts';
+import { createRideHeightControl } from './rideHeightControl';
 import { createSpeedControl, type MarkerDef, type ScaleMarker } from './speedControl';
 import { createTabs } from './tabs';
 import { createTrackMap } from './trackMap';
@@ -77,6 +81,8 @@ const MARKERS: Record<StationId, MarkerDef[]> = {
   energy: [],
   braking: [],
   tow: [],
+  // Station 6: where this set-up starts to porpoise (hidden when it never does; see aeromap.css).
+  aeroMap: [{ tone: 'drag', row: 0, side: 'left' }],
 };
 
 const SPEED_LAW: Record<StationId, string> = {
@@ -85,6 +91,7 @@ const SPEED_LAW: Record<StationId, string> = {
   energy: '',
   braking: '',
   tow: '',
+  aeroMap: '',
 };
 
 /** What the play button plays, per main control. */
@@ -143,7 +150,9 @@ export function createUI(opts: UIOptions): UI {
   // Station 4 keeps the speed slider (as "Brake from") and adds the Brake button under it.
   const brake = createBrakeControl({ onPlayToggle: () => handlers.onPlayToggle(), onRate: (rate) => handlers.onLapRate(rate) });
   const tow = createTowReadouts(handlers.onTowGapInput);
-  speed.el.append(brake.el, tow.control);
+  // Station 6 adds the static ride heights under the slider.
+  const ride = createRideHeightControl((setup) => handlers.onRideHeightInput(setup));
+  speed.el.append(brake.el, tow.control, ride.el);
   // Station 3 swaps the speed control for the lap control, and readouts + chart for its own.
   const lap = createLapControl({
     onPlayToggle: () => handlers.onPlayToggle(),
@@ -152,20 +161,24 @@ export function createUI(opts: UIOptions): UI {
   });
   const s3 = { read: createEnergyReadouts(), chart: createTrackMap((tS) => handlers.onLapScrub(tS)) };
   const s4 = { read: createBrakeReadouts(), chart: createBrakeChart((tS) => handlers.onLapScrub(tS)) };
+  const s6 = { read: createAeroMapReadouts(), chart: createAeroMapChart((setup) => handlers.onRideHeightInput(setup)) };
   s1.chart.el.id = 'ui-chart-downforce';
   s2.chart.el.id = 'ui-chart-activeAero';
   s3.chart.el.id = 'ui-chart-energy';
   s4.chart.el.id = 'ui-chart-braking';
+  s6.chart.el.id = 'ui-chart-aeroMap';
   s1.read.el.id = 'ui-read-downforce';
   s2.read.el.id = 'ui-read-activeAero';
   s3.read.el.id = 'ui-read-energy';
   s4.read.el.id = 'ui-read-braking';
+  s6.read.el.id = 'ui-read-aeroMap';
   const panels: Record<StationId, HTMLElement[]> = {
     downforce: [s1.read.el, s1.chart.el],
     activeAero: [s2.read.el, s2.chart.el, modeSwitch.el],
     energy: [s3.read.el, s3.chart.el],
     braking: [s4.read.el, s4.chart.el, brake.el],
     tow: [tow.el],
+    aeroMap: [s6.read.el, s6.chart.el, ride.el],
   };
   const panelEls = new Set(Object.values(panels).flat());
 
@@ -209,6 +222,8 @@ export function createUI(opts: UIOptions): UI {
     s3.chart.el,
     s4.read.el,
     s4.chart.el,
+    s6.read.el,
+    s6.chart.el,
     tow.el,
   ]);
   const bottom = h('div', 'ui-bottom', [caption.el, dock]);
@@ -467,6 +482,14 @@ export function createUI(opts: UIOptions): UI {
     }
   }
 
+  /** The porpoising marker only exists for set-ups that porpoise (aeromap.css hides it otherwise). */
+  let onsetShown: boolean | null = null;
+  function setOnsetShown(on: boolean) {
+    if (on === onsetShown) return;
+    onsetShown = on;
+    dock.dataset.onset = on ? 'yes' : 'none';
+  }
+
   setStation(opts.initialStation);
 
   return {
@@ -509,6 +532,16 @@ export function createUI(opts: UIOptions): UI {
         s2.read.render(v);
         s2.chart.render(v.speedKmh, v.mode, v.availablePowerW, v.requiredPowerW);
         caption.render(v.caption);
+      } else if (sv.station === 'aeroMap') {
+        const v = sv.view;
+        speed.render(v.speedKmh);
+        const onset = v.bounce.onsetKmh;
+        markers[0]?.set(onset ?? opts.maxKmh, onset === null ? '' : `Porpoising ${fmtKmh(onset)}`);
+        setOnsetShown(onset !== null);
+        ride.render(v);
+        s6.read.render(v);
+        s6.chart.render(v);
+        caption.render(v.caption);
       } else {
         const v: Station5View = sv.view;
         speed.render(v.speedKmh);
@@ -544,6 +577,9 @@ export function createUI(opts: UIOptions): UI {
       lap.dispose();
       brake.dispose();
       tow.dispose();
+      ride.dispose();
+      s6.read.dispose();
+      s6.chart.dispose();
       s3.chart.dispose();
       modeSwitch.dispose();
       livery.dispose();
