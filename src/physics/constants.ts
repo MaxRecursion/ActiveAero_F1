@@ -41,6 +41,38 @@ export const SOURCES = {
     label: 'Raceteq — CFD aero analysis of the 2026 car',
     url: 'https://www.raceteq.com/articles/2025/06/cfd-aero-analysis-of-2026-formula-1-car',
   },
+  zerihan2001: {
+    label: 'Zerihan, “An Investigation into the Aerodynamics of Wings in Ground Effect”, PhD thesis, University of Southampton (2001)',
+    url: 'https://eprints.soton.ac.uk/426058/',
+  },
+  ruhrmannZhang2003: {
+    label: 'Ruhrmann & Zhang, “Influence of Diffuser Angle on a Bluff Body in Ground Effect”, J. Fluids Eng. 125 (2003)',
+    url: 'https://eprints.soton.ac.uk/22607/',
+  },
+  zhangToetZerihan2006: {
+    label: 'Zhang, Toet & Zerihan, “Ground Effect Aerodynamics of Race Cars”, Appl. Mech. Rev. 59 (2006)',
+    url: 'https://eprints.soton.ac.uk/42969/',
+  },
+  gadola2022: {
+    label: 'Gadola, Chindamo, Magri & Sandrini, “Analyzing Porpoising on High Downforce Race Cars”, Energies 15:6677 (2022), CC BY 4.0',
+    url: 'https://doi.org/10.3390/en15186677',
+  },
+  bauerIsma2024: {
+    label: 'Bauer, Papangelo & Habib, “A reduced order approach for race car porpoising”, ISMA 2024',
+    url: 'https://past.isma-isaac.be/downloads/isma2024/proceedings/Contribution_254_proceeding_3.pdf',
+  },
+  symondsPorpoising2022: {
+    label: 'Autosport — “Porpoising explained by the architect of F1 2022’s technical rules” (Pat Symonds, 7 May 2022)',
+    url: 'https://www.autosport.com/f1/news/porpoising-explained-by-the-architect-of-f1-2022s-technical-rules/10300633/',
+  },
+  marchesin2017: {
+    label: 'Marchesin, Barbosa, Gadola & Chindamo, “High downforce race car vertical dynamics: aerodynamic index”, Vehicle System Dynamics (2017)',
+    url: 'https://sites.usp.br/ldsv/wp-content/uploads/sites/1453/2024/08/High-downforce-race-car-vertical-dynamics-aerodynamic-index_17.pdf',
+  },
+  shovlinPorpoising2025: {
+    label: 'Autosport — Shovlin on porpoising in 2026 (8 Nov 2025)',
+    url: 'https://www.autosport.com/f1/news/shovlin-no-porpoising-in-2026-but-f1-teams-must-be-aware-of-aero-traps/10774670/',
+  },
 } satisfies Record<string, Source>;
 
 /** Regulation facts. `ref` is the article in Section C, Issue 20. */

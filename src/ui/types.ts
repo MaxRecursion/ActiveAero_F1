@@ -13,7 +13,7 @@ import type { AeroSurfaceId } from '../physics/constants';
 import type { LapPhase } from '../physics/lap';
 import type { Insets } from '../scene/stage';
 
-export type StationId = 'downforce' | 'activeAero' | 'energy' | 'braking' | 'tow';
+export type StationId = 'downforce' | 'activeAero' | 'energy' | 'braking' | 'tow' | 'aeroMap';
 
 export interface StationMeta {
   id: StationId;
@@ -241,12 +241,98 @@ export interface Station5View {
   caption: CaptionRun[];
 }
 
+// ── Station 06 · Aero map ──────────────────────────────────────────────────────
+
+/** Ride heights in mm: the reference plane (floor underside, FIA Z = 0) above the ground at each axle line. */
+export interface RideHeights {
+  frontMm: number;
+  rearMm: number;
+}
+
+/**
+ * The floor's state on its ground-effect curve: below the peak height the diffuser flow
+ * separates and downforce falls away (Ruhrmann & Zhang 2003).
+ */
+export type FloorRegime = 'attached' | 'peak' | 'stalled';
+
+/** A named static set-up the UI offers as a one-click choice. */
+export interface RideHeightPreset extends RideHeights {
+  id: string;
+  label: string;
+}
+
+export interface Station6View {
+  speedKmh: number;
+  /** Static (garage) ride heights the user set. */
+  setup: RideHeights;
+  /** Ride heights now, at speed, including any bounce. */
+  dynamic: RideHeights;
+  /**
+   * Where this set-up sits on the map as speed rises from 0 to the top of the speed range
+   * (the platform settling on its springs). Same array object until the set-up changes.
+   */
+  trajectory: ReadonlyArray<{ kmh: number; frontMm: number; rearMm: number }>;
+  /** Map point where ClA and balance equal the constants the other stations use. */
+  reference: RideHeights;
+  clA: number;
+  cdA: number;
+  downforceN: number;
+  dragN: number;
+  /** Downforce ÷ drag. */
+  efficiency: number;
+  /** Aero balance: % of the downforce on the front axle, now and at the reference point. */
+  frontSharePct: number;
+  refFrontSharePct: number;
+  /** Static weight on the front axle, % (what the balance is usually compared with). */
+  weightFrontPct: number;
+  surfaces: ReadonlyArray<{ id: AeroSurfaceId; label: string; downforceN: number }>;
+  floor: {
+    regime: FloorRegime;
+    /** Gap under the floor at the diffuser inlet now, mm. */
+    throatGapMm: number;
+    /** Throat gap at which the floor makes the most downforce for the current pitch, mm. */
+    peakGapMm: number;
+  };
+  /**
+   * Underfloor centreline pressure coefficient from the front of the floor (x high) to the
+   * diffuser exit (x low), car-frame metres. The arrays may be reused between frames.
+   */
+  pressure: {
+    x: ArrayLike<number>;
+    cp: ArrayLike<number>;
+    /** Diffuser inlet (throat) and exit positions, m. */
+    throatX: number;
+    exitX: number;
+    /** Where the diffuser flow separates (null when attached), m. */
+    separationX: number | null;
+  };
+  /** Smallest gap between the plank's underside and the ground, mm (0 when touching). */
+  plankClearanceMm: number;
+  bottoming: boolean;
+  /** Heave/pitch bounce: the least-damped body mode at this speed, and what the car is doing now. */
+  bounce: {
+    /** Porpoising: the mode's damping has gone negative. */
+    unstable: boolean;
+    frequencyHz: number;
+    dampingRatio: number;
+    /** Peak-to-peak ride-height swing now (real, before any exaggeration), mm. */
+    amplitudeMm: number;
+    /** Lowest speed at which this set-up porpoises, or null if it never does in the speed range. */
+    onsetKmh: number | null;
+  };
+  /** How many times bigger the 3D view draws ride-height changes. */
+  rideExaggeration: number;
+  presets: ReadonlyArray<RideHeightPreset>;
+  caption: CaptionRun[];
+}
+
 export type StationView =
   | { station: 'downforce'; view: Station1View }
   | { station: 'activeAero'; view: Station2View }
   | { station: 'energy'; view: Station3View }
   | { station: 'braking'; view: Station4View }
-  | { station: 'tow'; view: Station5View };
+  | { station: 'tow'; view: Station5View }
+  | { station: 'aeroMap'; view: Station6View };
 
 // ── Shell ──────────────────────────────────────────────────────────────────────
 
@@ -254,6 +340,8 @@ export interface UIHandlers {
   /** User moved the speed control (slider drag, keys, preset click). */
   onSpeedInput(kmh: number): void;
   onTowGapInput(gapM: number): void;
+  /** Station 6: the user changed the static ride heights (sliders, a preset, or the map). */
+  onRideHeightInput(setup: RideHeights): void;
   onToggle(id: ToggleId, on: boolean): void;
   /** Whether the car sound is muted. */
   onSoundToggle(muted: boolean): void;

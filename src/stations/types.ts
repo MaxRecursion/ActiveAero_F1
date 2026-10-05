@@ -5,7 +5,7 @@
  */
 import type { Garage } from '../app/garage';
 import type { Shot, ShotName, Stage } from '../scene/stage';
-import type { AeroMode, StationUIConfig, ToggleId, UI } from '../ui/types';
+import type { AeroMode, RideHeights, StationUIConfig, ToggleId, UI } from '../ui/types';
 
 export interface StationContext {
   stage: Stage;
@@ -31,6 +31,8 @@ export interface Station {
   onLapScrub?(tS: number): void;
   onLapRate?(rate: number): void;
   onTowGap?(gapM: number): void;
+  /** Station 6: new static ride heights. */
+  onRideHeight?(setup: RideHeights): void;
   /** Take over the garage and UI (called after the previous station exited). */
   enter(): void;
   /** Put anything the station changed back to neutral. */
