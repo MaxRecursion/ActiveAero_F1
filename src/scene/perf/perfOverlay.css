@@ -1,0 +1,84 @@
+/*
+ * Performance overlay (perfOverlay.ts). Sits on the 3D view, top right, just under the toolbar.
+ * No backdrop blur on purpose: a blurred layer over a canvas that repaints every frame costs GPU
+ * time every frame, which is the one thing this read-out must not do. `contain` keeps its four
+ * text updates a second from touching layout anywhere else on the page.
+ */
+.perf-overlay {
+  position: absolute;
+  /* Under the toolbar (42 px sound button + 2 × 3 px padding + 2 × 1 px border = 50 px), and
+     below / left of any UI the app reports as covering the view (perfOverlay.ts `place`). */
+  top: max(calc(var(--gutter) + 58px), calc(var(--perf-inset-top, 0px) + 8px));
+  right: max(var(--gutter), var(--perf-inset-right, 0px));
+  z-index: 1;
+  width: 212px;
+  padding: 6px 9px 7px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  background: var(--paper-glass);
+  color: var(--ink-3);
+  font: 500 11px/1.45 var(--font-num);
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+  user-select: none;
+  contain: layout paint style;
+  /* --warn is tuned for light paper; lifted here so small warning text stays legible on dark. */
+  --perf-warn: var(--warn);
+}
+:root[data-theme='dark'] .perf-overlay { --perf-warn: color-mix(in oklab, var(--warn) 60%, white); }
+.perf-overlay[hidden] { display: none; }
+
+/* The GPU line and the labels take hover so their titles (full renderer string, what each
+   figure measures) can show; they are small and sit off the car, so orbit drags still pass. */
+.perf-gpu,
+.perf-grid dt {
+  pointer-events: auto;
+  cursor: default;
+}
+.perf-gpu {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin-bottom: 4px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid var(--rule);
+}
+.perf-dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  margin-top: 4.5px;
+  border-radius: 50%;
+  background: var(--ink-3);
+}
+.perf-overlay[data-gpu='hardware'] .perf-dot { background: var(--ok); }
+.perf-overlay[data-gpu='software'] .perf-dot { background: var(--warn); }
+.perf-verdict { flex: none; color: var(--ink); }
+.perf-overlay[data-gpu='software'] .perf-verdict { color: var(--perf-warn); }
+/* Wraps rather than truncates: the device name is the point of this line. */
+.perf-gpu-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.perf-grid {
+  display: grid;
+  grid-template-columns: auto 1fr auto 1fr;
+  gap: 0 8px;
+  margin: 0;
+}
+.perf-grid dt { color: var(--ink-3); }
+.perf-grid dd {
+  margin: 0;
+  color: var(--ink);
+  text-align: right;
+}
+.perf-grid dd[data-tone='low'] { color: var(--perf-warn); }
+
+/* Matches the compact toolbar in ui.css (top 10 px, 40 px button, 2 px padding). */
+@media (max-width: 719.98px), (max-height: 600px) {
+  .perf-overlay {
+    top: max(62px, calc(var(--perf-inset-top, 0px) + 8px));
+    right: max(12px, var(--perf-inset-right, 0px));
+  }
+}

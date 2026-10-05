@@ -15,6 +15,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { CSS2DRenderer } from 'three/addons/renderers/CSS2DRenderer.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { STUDIO_BACKGROUNDS } from './palette';
+import { createPerfOverlay, type PerfOverlay } from './perf/perfOverlay';
 import type { Theme } from '../theme';
 
 CameraControls.install({ THREE });
@@ -70,6 +71,8 @@ export interface Stage {
   labels: CSS2DRenderer;
   /** Key light — cast shadows. Exposed so modules can tune shadow bounds. */
   keyLight: THREE.DirectionalLight;
+  /** Performance read-out over the canvas (P key, or `?perf` in the URL). */
+  perf: PerfOverlay;
   onFrame(cb: FrameCallback): () => void;
   goTo(shot: ShotName | Shot, animate?: boolean): Promise<void>;
   /**
@@ -114,6 +117,8 @@ export function createStage(opts: StageOptions): Stage {
     pointerEvents: 'none',
   });
   mount.appendChild(labels.domElement);
+
+  const perf = createPerfOverlay(renderer, mount);
 
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(STUDIO_BACKGROUNDS.light);
@@ -282,6 +287,7 @@ export function createStage(opts: StageOptions): Stage {
   let warmup = 0;
 
   function frame() {
+    perf.begin();
     // One clock (performance.now) for every delta: rAF timestamps can lag the Timer's own start
     // time, and a negative first delta would run every animation backwards.
     timer.update();
@@ -292,6 +298,7 @@ export function createStage(opts: StageOptions): Stage {
     if (quality === 2) renderer.render(scene, camera);
     else composer.render(dt);
     labels.render(scene, camera);
+    perf.end();
     warmup += dt;
     if (warmup > 2 && !opts.quality) adapt(dt);
   }
@@ -303,6 +310,7 @@ export function createStage(opts: StageOptions): Stage {
     controls,
     labels,
     keyLight,
+    perf,
     get quality() {
       return quality;
     },
@@ -318,6 +326,7 @@ export function createStage(opts: StageOptions): Stage {
     },
     setInsets(next) {
       Object.assign(insets, next);
+      perf.setInsets(insets);
       resize();
     },
     start() {
@@ -325,6 +334,7 @@ export function createStage(opts: StageOptions): Stage {
     },
     dispose() {
       renderer.setAnimationLoop(null);
+      perf.dispose();
       ro.disconnect();
       timer.dispose();
       controls.dispose();
