@@ -453,6 +453,43 @@
   .ui-dock.is-graph-open .zone-amap { padding-top: 0; border-top: 0; }
 }
 
+/* ── phone, portrait ───────────────────────────────────────────────────────────
+   This station's sheet also carries the ride heights, so on a phone its numbers become a drawer
+   (as on every short screen) and the car keeps its share of the screen; the caption tells the story
+   meanwhile. Open, the numbers include the pressure under the floor. The drawer switches show icons
+   only (they keep their names for screen readers), so they never cover the speed. */
+
+@media (max-width: 719.98px) and (min-height: 600.02px) {
+  .ui-dock[data-station='aeroMap'] .numbers-toggle { display: inline-flex; }
+  .ui-dock[data-station='aeroMap'] .zone-read { display: none; }
+  .ui-dock[data-station='aeroMap'].is-numbers-open .zone-read {
+    display: flex;
+    padding-top: 10px;
+    border-top: 1px solid var(--rule);
+  }
+  .ui-dock[data-station='aeroMap'].is-numbers-open .ro-grid--amap {
+    grid-template-areas:
+      'down  down  down  bal    bal    bal'
+      'ride  ride  floor floor  bounce bounce'
+      'fp    fp    fp    fp     fp     fp';
+  }
+  .ui-dock[data-station='aeroMap'].is-numbers-open .fp { display: flex; }
+  .ui-dock[data-station='aeroMap'].is-numbers-open .fp-plot { height: 64px; }
+}
+@media (max-width: 719.98px) {
+  .ui-dock[data-station='aeroMap'] .drawer-toggle { width: 34px; padding: 0; justify-content: center; }
+  .ui-dock[data-station='aeroMap'] .drawer-toggle .toggle-label {
+    position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+  }
+}
+/* The landscape side panel is as narrow: the same icon-only switches. */
+@container dock (max-width: 344.98px) {
+  .ui-dock[data-station='aeroMap'] .drawer-toggle { width: 30px; padding: 0; justify-content: center; }
+  .ui-dock[data-station='aeroMap'] .drawer-toggle .toggle-label {
+    position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+  }
+}
+
 /* ── compact: ≤ 600 px tall — readouts and map are drawers ─────────────────────── */
 
 @media (max-height: 600px) {
@@ -480,6 +517,9 @@
 
 /* Side panel: drawers fly out to the left; the map gets a wider one. */
 @media (max-height: 600px) and (min-width: 640px) and (min-aspect-ratio: 3/2) {
+  /* The narrow panel: chips take the width their names need (the longest is the middle one). */
+  .rh-presets { grid-auto-columns: auto; justify-content: space-between; }
+  .rh-chip { padding: 0 7px; }
   .ui-dock.is-graph-open .zone-amap { width: min(470px, calc(100vw - 100% - 44px)); }
   .ui-dock.is-numbers-open .zone-read--amap { width: min(400px, calc(100vw - 100% - 44px)); }
 }

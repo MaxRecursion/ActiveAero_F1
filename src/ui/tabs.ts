@@ -30,7 +30,18 @@ export function createTabs(stations: StationMeta[], panelId: string, onPick: (id
       const on = t.dataset.station === id;
       t.setAttribute('aria-selected', String(on));
       t.tabIndex = on ? 0 : -1;
+      if (on) reveal(t);
     }
+  }
+
+  /** On a phone the strip scrolls: bring the current tab into it (only the strip moves, never the page). */
+  function reveal(tab: HTMLElement) {
+    requestAnimationFrame(() => {
+      const strip = el.getBoundingClientRect();
+      const t = tab.getBoundingClientRect();
+      if (t.left < strip.left) el.scrollLeft -= strip.left - t.left + 12;
+      else if (t.right > strip.right) el.scrollLeft += t.right - strip.right + 12;
+    });
   }
 
   const pick = (tab: HTMLElement | undefined, focus = false) => {

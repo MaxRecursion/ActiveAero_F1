@@ -441,13 +441,17 @@ export function createUI(opts: UIOptions): UI {
     const vw = window.innerWidth;
     const vh = window.innerHeight;
     const headerBottom = Math.round(header.getBoundingClientRect().bottom);
+    // The UI root sits inside the safe area (tokens.css): a phone's notch in landscape is not free room.
+    const safe = root.getBoundingClientRect();
+    const safeLeft = Math.max(0, Math.round(safe.left));
+    const safeRight = Math.max(0, Math.round(vw - safe.right));
     if (sideMq.matches) {
       // Panel on the right, header top-left: centre the car in the column left of the panel.
       return {
         top: headerBottom,
-        right: Math.max(0, Math.round(vw - bottom.getBoundingClientRect().left + INSET_MARGIN)),
+        right: Math.max(safeRight, Math.round(vw - bottom.getBoundingClientRect().left + INSET_MARGIN)),
         bottom: 0,
-        left: 0,
+        left: safeLeft,
       };
     }
     // On sheet layouts the caption sits over the scene (or heads the sheet); keep the car clear of it.
@@ -455,9 +459,9 @@ export function createUI(opts: UIOptions): UI {
     const top = sheet ? Math.min(caption.el.getBoundingClientRect().top, dock.getBoundingClientRect().top) : dock.getBoundingClientRect().top;
     return {
       top: sheet ? headerBottom : 0,
-      right: 0,
+      right: safeRight,
       bottom: Math.max(0, Math.round(vh - top + INSET_MARGIN)),
-      left: 0,
+      left: safeLeft,
     };
   }
 

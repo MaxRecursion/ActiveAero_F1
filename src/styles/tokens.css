@@ -74,6 +74,11 @@ html, body {
   overflow: hidden;
   background: var(--canvas);
 }
+/* iPhone Safari enlarges text when the phone turns to landscape unless told not to. */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
 
 #app {
   position: fixed;
@@ -95,9 +100,17 @@ html, body {
 }
 #stage canvas:active { cursor: grabbing; }
 
+/*
+ * The panels stay inside the safe area: the page runs edge to edge (viewport-fit=cover), so on a phone
+ * in landscape the notch or Dynamic Island takes one side. The bottom stays at the edge; the phone
+ * sheet pads itself above the home indicator. All zero on desktops.
+ */
 #ui {
   position: absolute;
-  inset: 0;
+  top: env(safe-area-inset-top, 0px);
+  right: env(safe-area-inset-right, 0px);
+  bottom: 0;
+  left: env(safe-area-inset-left, 0px);
   z-index: 2;
   pointer-events: none;
 }

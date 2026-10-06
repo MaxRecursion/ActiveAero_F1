@@ -105,16 +105,25 @@
   gap: 8px 12px;
   margin-top: 14px;
 }
-/* Station tabs: one joined strip, the current station inked like a pressed control. */
+/* Station tabs: one joined strip, the current station inked like a pressed control. Where the
+   screen is too narrow for all six (phones), the strip scrolls sideways under a finger, no wider than
+   the room it has: the screen less its gutters, or the space left of the landscape side panel. */
 .tabs {
+  --tabs-room: calc(100vw - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px) - 2 * var(--gutter));
   display: inline-flex;
   flex: none;
+  max-width: var(--tabs-room);
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
   padding: 2px;
   gap: 2px;
   border: 1px solid var(--rule-strong);
   border-radius: var(--radius);
   background: var(--paper-glass);
 }
+.tabs::-webkit-scrollbar { display: none; }
+.tab { flex: none; }
 .tab {
   display: inline-flex;
   align-items: baseline;
@@ -1521,10 +1530,16 @@
 /* ── side: short and wide — the sheet becomes a panel on the right, the car keeps full height ─ */
 
 @media (max-height: 600px) and (min-width: 640px) and (min-aspect-ratio: 3/2) {
+  /* The header (and so the tab strip) stops short of the panel on the right: the panel's width, its
+     right margin, a gap and the header's own left offset. The tabs then take the row they need. */
+  .ui-header { max-width: calc(100% - clamp(300px, 40vw, 360px) - 12px - 12px - 14px); }
+  .header-meta { min-width: 0; max-width: 100%; }
+  .tabs { --tabs-room: 100%; }
   .ui-bottom {
     left: auto;
     right: 12px;
-    bottom: 10px;
+    /* Clear of a phone's home indicator. */
+    bottom: calc(10px + env(safe-area-inset-bottom, 0px));
     width: clamp(300px, 40vw, 360px);
     max-height: calc(100% - 64px); /* clear of the toolbar */
   }
