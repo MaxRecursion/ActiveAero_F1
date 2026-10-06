@@ -19,6 +19,7 @@ import type { StationId, StationUIConfig, StationView, UI } from '../ui/types';
 import { createEngineSound } from './engineSound';
 import { createGarage, easeInOut } from './garage';
 import { getLivery, setLiveryPreference } from '../scene/car/livery/preference';
+import { noteStation } from '../analytics/client';
 import { getTheme } from '../theme';
 
 /** Tab order. */
@@ -183,6 +184,7 @@ export function startApp(stage: Stage, uiRoot: HTMLElement, car: CarModel) {
 
   // ── routing ────────────────────────────────────────────────────────────────────
   function switchTo(id: StationId) {
+    noteStation(id);
     if (active === stations[id]) return;
     stopSweep();
     active?.exit();

@@ -337,6 +337,10 @@ export function createAbout(stations: StationMeta[]): AboutDialog {
     ...groupEls,
     h('div', 'about-group about-group--shared', [sources, credits, shortcuts]),
     p(DISCLAIMER, 'about-disclaimer'),
+    p(
+      'A cookieless count of visits — where the browser came from, the kind of screen, and which stations opened — is kept for 90 days so the project can see that people are using it. It does not identify you.',
+      'about-disclaimer',
+    ),
   ]);
   const el = h('dialog', { class: 'about', attrs: { 'aria-labelledby': 'about-title' } }, [
     h('header', 'about-head', [h('div', {}, [kicker, title]), closeBtn]),

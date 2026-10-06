@@ -62,7 +62,7 @@ Keep `models/source/` (the 40 MB original) out of the repo — it is git-ignored
 - [ ] `npm run build && npx wrangler pages dev dist` locally — confirms `_headers` + CSP don't block anything
 - [ ] Preview deploy checked on desktop Chrome/Safari/Firefox and a phone (WebGL 2 required)
 - [ ] Open Graph image (`og:image`) for link previews
-- [ ] Optional: Cloudflare **Web Analytics** (cookie-free). The strict CSP blocks its beacon until `script-src` gains `https://static.cloudflareinsights.com` and `connect-src` gains `https://cloudflareinsights.com` in `public/_headers`.
+- [ ] Visits: in the Pages project, **Settings → Functions → KV namespace bindings**, variable name `ANALYTICS`. Then open `/api/stats`. See below. The app's CSP stays `connect-src 'self'` because the beacon is same-origin.
 
 ## Alternatives (not needed now)
 
@@ -70,6 +70,20 @@ Keep `models/source/` (the 40 MB original) out of the repo — it is git-ignored
   `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` repo secrets. Worth it only if the build grows extra steps.
 - **Workers static assets**: Cloudflare's newer recommended home for new projects; same static `dist/`, configured with a
   `wrangler.jsonc`. Easy to move to later — nothing in the app depends on Pages specifically.
+
+## Visits
+
+The explainer posts a cookieless note to `/api/collect` when it finishes starting and again when the visitor leaves (stations opened, how long the page stayed open). `/api/stats` shows the last 30 days: visits, first-time and returning browsers, where they came from, screen and browser, landing station, stations opened, and whether startup succeeded.
+
+Cloudflare Pages runs `functions/api/collect.ts` and `functions/api/stats.ts` next to the static `dist/`. Without storage, those functions remember rows only inside the current server process. To keep them:
+
+1. Workers & Pages → KV → Create a namespace (any name).
+2. Open the Pages project → Settings → Functions → KV namespace bindings.
+3. Variable name: `ANALYTICS`. Save and redeploy.
+
+Rows expire after 90 days. The report is public aggregate counts at `/api/stats` (`?format=json` for the same data). It stores a referrer host or campaign name, a coarse device and browser, and station ids. It does not store an IP address, a cookie, or the raw user-agent.
+
+GitHub Pages publishes `dist/` only, so it does not run `/api/collect`. Counts accumulate on the Cloudflare Pages URL.
 
 ## GitHub Pages
 

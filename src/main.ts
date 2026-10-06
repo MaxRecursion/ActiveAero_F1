@@ -6,6 +6,7 @@ import { buildCar } from './scene/car/buildCar';
 import { loadCar } from './scene/car/loadCar';
 import type { CarModel } from './scene/car/types';
 import { createStage, type Stage } from './scene/stage';
+import { installAnalytics } from './analytics/client';
 import { watchPortraitPhone } from './ui/portraitPhone';
 
 initializeTheme();
@@ -55,6 +56,8 @@ async function getCar(): Promise<CarModel> {
 }
 
 /** Replace the loading line with a message screen readers announce and everyone can read. */
+const analytics = installAnalytics({ webgl: hasWebGL2() });
+
 function showFailure(message: string) {
   boot.textContent = message;
   boot.classList.remove('gone');
@@ -79,6 +82,7 @@ async function start(mountEl: HTMLElement) {
   } catch (err) {
     console.error(err);
     showFailure('Something went wrong starting the 3D view. Reload the page, or try another browser.');
+    analytics.outcome('start-failed');
     return;
   }
   let frames = 0;
@@ -86,6 +90,7 @@ async function start(mountEl: HTMLElement) {
     if (++frames < 3) return;
     boot.classList.add('gone');
     window.__ready = true;
+    analytics.outcome('ready');
     off();
   });
   stage.start();
@@ -93,6 +98,7 @@ async function start(mountEl: HTMLElement) {
 
 if (!hasWebGL2()) {
   showFailure('This explainer needs WebGL 2, which this browser or device has turned off. Try another browser or enable hardware acceleration.');
+  analytics.outcome('no-webgl');
 } else {
   void start(mount);
 }

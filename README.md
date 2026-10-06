@@ -32,6 +32,12 @@ npm run preview    # serve the production build locally
 
 The app requires WebGL 2. If the processed car model cannot load, startup falls back to a procedural car so the explainer can still run. The site is fully static; see [docs/DEPLOY.md](docs/DEPLOY.md) for Cloudflare Pages and GitHub Pages hosting.
 
+## Visits
+
+The page keeps a cookieless count of how people arrive and what they open: referrer host or campaign tag, phone / tablet / desktop, browser family, and the stations reached. Nothing identifies a person — no cookie, account, IP address, or raw user-agent. Automated browsers (screenshots, Lighthouse) are skipped.
+
+`npm run dev` and `npm run preview` collect into that process. Open [http://localhost:5173/api/stats](http://localhost:5173/api/stats) (add `?format=json` for the same numbers as JSON). On Cloudflare Pages the same routes are `functions/api/collect.ts` and `functions/api/stats.ts`; bind a KV namespace named `ANALYTICS` or the counts last only as long as the server process. GitHub Pages serves the static files and does not run those routes. Rows are kept for 90 days and the report shows the last 30.
+
 ## Architecture
 
 The app is organized around a persistent 3D stage and garage. The app shell creates each station once, routes between stations by hash, and keeps shared state such as speed. A station owns the active experience: it combines physics results with garage commands and sends a typed view to the DOM UI.
@@ -84,7 +90,9 @@ Station routes are hash-based: `#/downforce`, `#/active-aero`, `#/energy`, `#/br
 
 | Path | Responsibility |
 |------|----------------|
-| `src/main.ts` | WebGL 2 check, stage/model startup, and fallback handling. |
+| `src/main.ts` | WebGL 2 check, stage/model startup, fallback handling, and the visit beacon. |
+| `src/analytics/` | Cookieless visit records, the `/api/stats` rollup, and the dev-server routes. |
+| `functions/api/` | Cloudflare Pages handlers for `/api/collect` and `/api/stats`. |
 | `src/app/` | Station routing, shared speed and animation loop, garage scene, and engine sound (a recorded engine played by position, `src/app/sound/`). |
 | `src/stations/` | Station-specific configuration, interaction, captions, and view models. |
 | `src/physics/` | Aero, powertrain, track/lap, braking, tow and aero-map (ride height, platform, porpoising) models; constants and sources; focused Vitest tests. |

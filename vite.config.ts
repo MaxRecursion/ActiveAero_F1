@@ -1,3 +1,4 @@
+import { analyticsDevPlugin } from './src/analytics/devMiddleware.ts';
 import { defineConfig } from 'vitest/config';
 
 // The desktop preview assigns a free port through PORT; honour it strictly so the preview
@@ -23,7 +24,7 @@ const shareTags = {
 
 export default defineConfig({
   base: pagesBasePath ?? './',
-  plugins: [shareTags],
+  plugins: [shareTags, analyticsDevPlugin()],
   server: { port, strictPort: port !== undefined },
   build: {
     target: 'es2022',
