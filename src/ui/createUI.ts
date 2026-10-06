@@ -18,6 +18,7 @@ import './about.css';
 import './energy.css';
 import './brake.css';
 import './aeromap.css';
+import './gesture.css';
 
 import type { Insets } from '../scene/stage';
 import type { AeroMode, BrakeState, Station5View, StationId, StationUIConfig, ToggleId, UI, UIOptions } from './types';
@@ -35,6 +36,7 @@ import { createBrakeReadouts } from './brakeReadouts';
 import { createCaption } from './caption';
 import { createForceChart } from './chart';
 import { createEnergyReadouts } from './energyReadouts';
+import { createGestureHint } from './gestureHint';
 import { createLapControl } from './lapControl';
 import { createLiverySwitch } from './liverySwitch';
 import { createModeSwitch } from './modeSwitch';
@@ -232,7 +234,9 @@ export function createUI(opts: UIOptions): UI {
   const bottom = h('div', 'ui-bottom', [caption.el, dock]);
 
   const about = createAbout(opts.stations.map((c) => c.meta));
-  root.append(header, toolbar, bottom, about.el);
+  // "Pinch to zoom · drag to turn": once, over the car, until the visitor tries it.
+  const gesture = createGestureHint();
+  root.append(header, toolbar, gesture.el, bottom, about.el);
 
   // ── station switching ─────────────────────────────────────────────────────────
   let active: StationId | null = null;
@@ -429,6 +433,7 @@ export function createUI(opts: UIOptions): UI {
     bottom.style.setProperty('--drawer-max', `${Math.max(120, Math.round(room))}px`);
   }
   layoutCbs.add(syncDrawerRoom);
+  layoutCbs.add(() => gesture.setArea(getInsets()));
   const ro = new ResizeObserver(notifyLayout);
   for (const el of [document.documentElement, header, dock, caption.el]) ro.observe(el);
   for (const mq of [sheetMq, sideMq, compactMq]) mq.addEventListener('change', notifyLayout);
@@ -596,6 +601,7 @@ export function createUI(opts: UIOptions): UI {
       s2.chart.dispose();
       s4.chart.dispose();
       about.dispose();
+      gesture.dispose();
       header.remove();
       toolbar.remove();
       bottom.remove();

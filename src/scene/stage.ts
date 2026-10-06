@@ -85,6 +85,12 @@ export interface Stage {
   setQuality(tier: 0 | 1 | 2): void;
   setTheme(theme: Theme): void;
   start(): void;
+  /**
+   * Stop drawing (and stepping every frame callback) while paused; resume where it left off. Used while
+   * the "turn your phone" screen covers everything. The first frame after resuming is clamped like any
+   * hitch, so nothing jumps.
+   */
+  setPaused(paused: boolean): void;
   dispose(): void;
 }
 
@@ -282,6 +288,9 @@ export function createStage(opts: StageOptions): Stage {
 
   // ── frame loop ─────────────────────────────────────────────────────────────────
   const callbacks = new Set<FrameCallback>();
+  /** Started by start(); paused by setPaused() (the loop runs only when started and not paused). */
+  let running = false;
+  let paused = false;
   const timer = new THREE.Timer();
   timer.connect(document);
   let warmup = 0;
@@ -330,7 +339,13 @@ export function createStage(opts: StageOptions): Stage {
       resize();
     },
     start() {
-      renderer.setAnimationLoop(frame);
+      running = true;
+      if (!paused) renderer.setAnimationLoop(frame);
+    },
+    setPaused(on) {
+      if (on === paused) return;
+      paused = on;
+      if (running) renderer.setAnimationLoop(on ? null : frame);
     },
     dispose() {
       renderer.setAnimationLoop(null);

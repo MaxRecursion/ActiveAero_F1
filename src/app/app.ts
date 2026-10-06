@@ -53,6 +53,9 @@ export function startApp(stage: Stage, uiRoot: HTMLElement, car: CarModel) {
   const engineSound = createEngineSound();
 
   const speed = { target: 0, kmh: 0 };
+  /** The visitor's sound choice (the UI starts muted), and whether the app is asleep behind the rotate screen. */
+  let soundMuted = true;
+  let asleep = false;
   const heard = {
     kmh: 0,
     straightT: 0,
@@ -83,7 +86,10 @@ export function startApp(stage: Stage, uiRoot: HTMLElement, car: CarModel) {
         active?.onToggle?.(id, on);
         syncAirflowAvailability();
       },
-      onSoundToggle: (muted) => engineSound.setMuted(muted),
+      onSoundToggle(muted) {
+        soundMuted = muted;
+        engineSound.setMuted(muted || asleep);
+      },
       onThemeChange: (theme) => stage.setTheme(theme),
       onLiveryChange(id) {
         setLiveryPreference(id);
@@ -241,6 +247,15 @@ export function startApp(stage: Stage, uiRoot: HTMLElement, car: CarModel) {
   }
 
   return {
+    /**
+     * Asleep while a phone is held upright behind the "turn your phone" screen: the car goes quiet (the
+     * visitor's sound choice is kept and comes back on waking). The caller pauses the stage.
+     */
+    setAsleep(on: boolean) {
+      if (on === asleep) return;
+      asleep = on;
+      engineSound.setMuted(soundMuted || asleep);
+    },
     dispose() {
       offFrame();
       window.removeEventListener('hashchange', onHash);

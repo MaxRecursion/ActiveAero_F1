@@ -1,0 +1,86 @@
+/*
+ * The gesture hint (gestureHint.ts): a dark pill over the car, inverted in the dark theme. Its box is
+ * the free area (set from the stage insets); the pill sits in the middle. It never takes a pointer.
+ */
+#ui > .gesture-hint {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none !important;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.45s ease, transform 0.45s ease;
+}
+#ui > .gesture-hint.is-shown {
+  opacity: 1;
+  transform: none;
+}
+.gh-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: calc(100% - 24px);
+  padding: 8px 16px 8px 10px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--ink) 88%, transparent);
+  color: var(--paper);
+  font: 500 14px/1.25 var(--font-ui);
+  box-shadow: 0 12px 32px -14px rgb(0 0 0 / 0.65);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+.gh-icon {
+  flex: none;
+  width: 38px;
+  height: 38px;
+  overflow: visible;
+}
+.gh-track { fill: none; stroke: currentColor; stroke-width: 2; stroke-dasharray: 2 4; opacity: 0.45; }
+.gh-tip { fill: none; stroke: var(--drag); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.gh-finger { fill: currentColor; }
+.gh-mouse { fill: none; stroke: currentColor; stroke-width: 3; }
+.gh-wheel { stroke: var(--drag); stroke-width: 4; stroke-linecap: round; }
+
+/* Two fingers spread apart and close again; the wheel rolls. */
+.gh-finger { transform-box: fill-box; transform-origin: center; animation: gh-pinch-a 1.8s ease-in-out infinite; }
+.gh-finger--b { animation-name: gh-pinch-b; }
+@keyframes gh-pinch-a {
+  0%, 15% { transform: translate(0, 0); }
+  55%, 70% { transform: translate(-9px, 9px); }
+  100% { transform: translate(0, 0); }
+}
+@keyframes gh-pinch-b {
+  0%, 15% { transform: translate(0, 0); }
+  55%, 70% { transform: translate(9px, -9px); }
+  100% { transform: translate(0, 0); }
+}
+.gh-wheel { animation: gh-roll 1.4s ease-in-out infinite; }
+@keyframes gh-roll {
+  0%, 20% { transform: translateY(0); }
+  60% { transform: translateY(7px); opacity: 0.3; }
+  100% { transform: translateY(0); }
+}
+
+/* Touch screens get the pinch; anything with a mouse gets the wheel. */
+.gh-icon--mouse,
+.gh-mouse-text { display: none; }
+@media (hover: hover), (pointer: fine) {
+  .gh-icon--touch,
+  .gh-touch { display: none; }
+  .gh-icon--mouse { display: block; }
+  .gh-mouse-text { display: inline; }
+}
+
+@media (max-height: 600px) {
+  .gh-card { gap: 8px; padding: 6px 13px 6px 8px; font-size: 13px; }
+  .gh-icon { width: 32px; height: 32px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #ui > .gesture-hint { transition: none; }
+  .gh-finger,
+  .gh-wheel { animation: none; }
+  .gh-finger--a { transform: translate(-6px, 6px); }
+  .gh-finger--b { transform: translate(6px, -6px); }
+}

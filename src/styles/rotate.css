@@ -1,0 +1,112 @@
+/*
+ * "Turn your phone sideways": a dark screen over everything on a phone held upright. The explainer
+ * is built for a wide screen — upright, the panels leave the car a sliver — so a phone in portrait is
+ * asked to turn instead. The phone in the drawing turns a quarter-turn on a loop, and the car on its
+ * screen comes level as it does, so the cue reads without words.
+ *
+ * Phones only: touch with no hover, narrower than any tablet. A narrow desktop window (mouse) and a
+ * tablet in portrait keep the app. The query must match PORTRAIT_PHONE_QUERY in src/ui/portraitPhone.ts
+ * and the theme-color meta in index.html. Always dark, whatever the app's theme.
+ */
+
+.rotate { display: none; }
+
+@media (orientation: portrait) and (max-width: 599.98px) and (hover: none) and (pointer: coarse) {
+  .rotate {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: max(28px, env(safe-area-inset-top)) 32px max(28px, env(safe-area-inset-bottom));
+    background: radial-gradient(130% 75% at 50% 40%, #1b1e25 0%, #0b0c0f 72%);
+    color: #f4f2ed;
+    text-align: center;
+    -webkit-user-select: none;
+    user-select: none;
+    touch-action: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+.rotate-mark {
+  position: absolute;
+  top: max(22px, env(safe-area-inset-top));
+  left: 0;
+  right: 0;
+  margin: 0;
+  font: 800 18px/1 'Archivo Variable', 'Archivo', system-ui, sans-serif;
+  font-stretch: 125%;
+  letter-spacing: 0.04em;
+  color: rgb(244 242 237 / 0.55);
+}
+
+.rotate-art {
+  width: min(220px, 56vw);
+  height: auto;
+  margin-bottom: 10px;
+  overflow: visible;
+}
+.rotate-body { fill: rgb(255 255 255 / 0.05); stroke: #f4f2ed; stroke-width: 3.5; }
+.rotate-speaker { fill: #f4f2ed; opacity: 0.55; }
+.rotate-car { fill: #f4f2ed; }
+.rotate-arrow,
+.rotate-arrow-head {
+  fill: none;
+  stroke: #f2551d;
+  stroke-width: 5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.rotate-phone {
+  transform-box: view-box;
+  transform-origin: 100px 100px;
+  animation: rotate-turn 3.2s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+.rotate-arrow,
+.rotate-arrow-head { animation: rotate-pulse 3.2s ease-in-out infinite; }
+
+/* Upright, then a quarter-turn clockwise (the way the arrow points), a hold, and back. */
+@keyframes rotate-turn {
+  0%, 16% { transform: rotate(0deg); }
+  46%, 80% { transform: rotate(90deg); }
+  100% { transform: rotate(0deg); }
+}
+@keyframes rotate-pulse {
+  0%, 12% { opacity: 1; }
+  46%, 80% { opacity: 0.25; }
+  100% { opacity: 1; }
+}
+
+.rotate-title {
+  margin: 0;
+  font: 800 26px/1.1 'Archivo Variable', 'Archivo', system-ui, sans-serif;
+  font-stretch: 112%;
+  letter-spacing: 0.01em;
+}
+.rotate-text {
+  max-width: 30ch;
+  margin: 2px 0 0;
+  font: 400 16px/1.4 'IBM Plex Sans Condensed', system-ui, sans-serif;
+  color: rgb(244 242 237 / 0.78);
+}
+.rotate-hint {
+  position: absolute;
+  bottom: max(22px, env(safe-area-inset-bottom));
+  left: 32px;
+  right: 32px;
+  margin: 0;
+  font: 400 13px/1.4 'IBM Plex Sans Condensed', system-ui, sans-serif;
+  color: rgb(244 242 237 / 0.5);
+}
+
+/* Reduced motion: the turn is shown, not played — the phone already on its side, the arrow solid. */
+@media (prefers-reduced-motion: reduce) {
+  .rotate-phone { animation: none; transform: rotate(90deg); }
+  .rotate-arrow,
+  .rotate-arrow-head { animation: none; }
+}

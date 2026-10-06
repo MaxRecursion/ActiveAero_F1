@@ -1,10 +1,12 @@
 import './styles/tokens.css';
+import './styles/rotate.css';
 import { getTheme, initializeTheme } from './theme';
 import { startApp } from './app/app';
 import { buildCar } from './scene/car/buildCar';
 import { loadCar } from './scene/car/loadCar';
 import type { CarModel } from './scene/car/types';
 import { createStage, type Stage } from './scene/stage';
+import { watchPortraitPhone } from './ui/portraitPhone';
 
 initializeTheme();
 
@@ -26,6 +28,21 @@ function hasWebGL2(): boolean {
 const mount = document.getElementById('stage')!;
 const uiRoot = document.getElementById('ui')!;
 const boot = document.getElementById('boot')!;
+const appEl = document.getElementById('app')!;
+
+/**
+ * A phone held upright gets the "turn your phone sideways" screen (index.html, rotate.css). Behind it
+ * the app is inert (no focus, no taps, hidden from screen readers), the 3D view stops drawing and the
+ * car goes quiet; turning the phone wakes it where it was.
+ */
+let upright = false;
+let sleepApp: ((asleep: boolean) => void) | null = null;
+watchPortraitPhone((on) => {
+  upright = on;
+  appEl.inert = on;
+  if (on) for (const d of document.querySelectorAll<HTMLDialogElement>('dialog[open]')) d.close();
+  sleepApp?.(on);
+});
 
 /** The real body if the model loads; the procedural car keeps the page working if it does not. */
 async function getCar(): Promise<CarModel> {
@@ -53,7 +70,12 @@ async function start(mountEl: HTMLElement) {
     stage = createStage({ mount: mountEl });
     stage.setTheme(getTheme());
     car = await getCar();
-    startApp(stage, uiRoot, car);
+    const app = startApp(stage, uiRoot, car);
+    sleepApp = (asleep) => {
+      stage.setPaused(asleep);
+      app.setAsleep(asleep);
+    };
+    sleepApp(upright);
   } catch (err) {
     console.error(err);
     showFailure('Something went wrong starting the 3D view. Reload the page, or try another browser.');
