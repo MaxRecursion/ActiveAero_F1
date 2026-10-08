@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>KPI cards</title>
+  <style>
+    :root {
+      --bg: #e8e4dc;
+      --card: #fffcf8;
+      --ink: #1c1915;
+      --muted: #6d675f;
+      --faint: #8d877e;
+      --line: #e4ddd2;
+      --line-strong: #d8d0c4;
+      --good: #0c6a46;
+      --good-bg: #e5f3ec;
+      --bad: #9d2c2c;
+      --bad-bg: #f8ecea;
+      --flat: #5c564e;
+      --flat-bg: #efece6;
+      --shadow: 0 1px 0 rgba(255, 255, 255, 0.8) inset, 0 10px 28px rgba(48, 38, 22, 0.05);
+      --sans: Inter, "Segoe UI", system-ui, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background:
+        radial-gradient(1200px 480px at 10% -10%, rgba(255, 255, 255, 0.7), transparent 55%),
+        var(--bg);
+      color: var(--ink);
+      font-family: var(--sans);
+      font-feature-settings: "ss01" on, "cv11" on;
+      line-height: 1.4;
+    }
+
+    .wrap {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 40px 20px 72px;
+    }
+
+    .page-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 16px 32px;
+      margin-bottom: 22px;
+    }
+
+    .eyebrow {
+      margin: 0 0 4px;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(1.6rem, 2.4vw, 2rem);
+      font-weight: 600;
+      letter-spacing: -0.03em;
+      line-height: 1.1;
+    }
+
+    .asof {
+      margin: 0;
+      max-width: 28rem;
+      font-size: 13px;
+      color: var(--muted);
+      text-align: right;
+    }
+
+    .board {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+      gap: 14px;
+      margin-top: 14px;
+    }
+
+    .kpi {
+      container-type: inline-size;
+      background: var(--card);
+      border: 1px solid var(--line-strong);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      padding: 18px 18px 14px;
+    }
+
+    .kpi-top {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .kpi h2 {
+      margin: 0;
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+    }
+
+    .meta {
+      margin: 0;
+      font-size: 12px;
+      color: var(--faint);
+      white-space: nowrap;
+    }
+
+    .value {
+      margin: 10px 0 0;
+      font-size: clamp(2.15rem, 8cqi, 3.15rem);
+      font-weight: 700;
+      letter-spacing: -0.045em;
+      line-height: 0.95;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .currency,
+    .unit {
+      font-weight: 600;
+      letter-spacing: -0.03em;
+    }
+
+    .currency { font-size: 0.62em; margin-right: 0.02em; }
+    .unit { font-size: 0.5em; margin-left: 0.04em; color: #3f3a34; }
+
+    .comps {
+      display: flex;
+      flex-direction: column;
+      margin: 16px 0 2px;
+      padding-top: 2px;
+      border-top: 1px solid var(--line);
+    }
+
+    .comp {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto auto;
+      column-gap: 14px;
+      align-items: center;
+      min-height: 40px;
+      padding: 7px 0;
+    }
+
+    .comp + .comp { border-top: 1px solid var(--line); }
+
+    .comp dt {
+      margin: 0;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--muted);
+    }
+
+    .comp dd {
+      margin: 0;
+      font-size: 14px;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.02em;
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .comp.good dd { color: var(--good); }
+    .comp.bad dd { color: var(--bad); }
+    .comp.flat dd { color: var(--ink); }
+    .comp.na dd { color: var(--faint); font-weight: 500; }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 4.6rem;
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.01em;
+      line-height: 1.3;
+      white-space: nowrap;
+    }
+
+    .comp.good .status { color: var(--good); background: var(--good-bg); }
+    .comp.bad .status { color: var(--bad); background: var(--bad-bg); }
+    .comp.flat .status,
+    .comp.na .status { color: var(--flat); background: var(--flat-bg); }
+
+    @container (max-width: 380px) {
+      .comp {
+        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-areas:
+          "label value"
+          "label status";
+        row-gap: 3px;
+        align-items: center;
+        padding: 9px 0;
+      }
+
+      .comp dt { grid-area: label; }
+      .comp dd { grid-area: value; }
+      .status { grid-area: status; justify-self: end; }
+    }
+
+    @container (min-width: 560px) {
+      .comps {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 0;
+        margin-top: 18px;
+        padding-top: 14px;
+      }
+
+      .comp {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        justify-content: flex-start;
+        gap: 3px;
+        min-height: 0;
+        padding: 0 12px 2px 18px;
+      }
+
+      .comp + .comp {
+        border-top: 0;
+        border-left: 1px solid var(--line);
+      }
+
+      .comp:first-child { padding-left: 0; }
+
+      .comp dd {
+        margin-top: 2px;
+        font-size: 20px;
+        font-weight: 600;
+        text-align: left;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .wrap { padding: 28px 16px 56px; }
+
+      .page-head {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .asof { text-align: left; }
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <header class="page-head">
+      <div>
+        <p class="eyebrow">Group performance</p>
+        <h1>Year to date</h1>
+      </div>
+      <p class="asof">Actuals against the current forecast, the prior forecast, and last year. Amounts in millions of euros.</p>
+    </header>
+
+    <article class="kpi" aria-labelledby="kpi-revenues">
+      <div class="kpi-main">
+        <div class="kpi-figure">
+          <div class="kpi-top">
+            <h2 id="kpi-revenues">Revenues</h2>
+            <p class="meta">Actual</p>
+          </div>
+          <p class="value"><span class="currency">€</span>1,820<span class="unit">m</span></p>
+        </div>
+        <dl class="comps">
+          <div class="comp flat">
+            <dt>vs. Forecast</dt>
+            <dd>+€0m</dd>
+            <span class="status">In line</span>
+          </div>
+          <div class="comp na">
+            <dt>vs. Prior forecast</dt>
+            <dd aria-label="Not available">—</dd>
+            <span class="status">No prior</span>
+          </div>
+          <div class="comp bad">
+            <dt>vs. Prior year</dt>
+            <dd>(19)%</dd>
+            <span class="status">Behind</span>
+          </div>
+        </dl>
+      </div>
+    </article>
+
+    <div class="board">
+      <article class="kpi" aria-labelledby="kpi-ebit">
+        <div class="kpi-main">
+          <div class="kpi-figure">
+            <div class="kpi-top">
+              <h2 id="kpi-ebit">EBIT</h2>
+              <p class="meta">Actual</p>
+            </div>
+            <p class="value"><span class="currency">€</span>214<span class="unit">m</span></p>
+          </div>
+          <dl class="comps">
+            <div class="comp good">
+              <dt>vs. Forecast</dt>
+              <dd>+€12m</dd>
+              <span class="status">Ahead</span>
+            </div>
+            <div class="comp good">
+              <dt>vs. Prior forecast</dt>
+              <dd>+€4m</dd>
+              <span class="status">Ahead</span>
+            </div>
+            <div class="comp bad">
+              <dt>vs. Prior year</dt>
+              <dd>(6)%</dd>
+              <span class="status">Behind</span>
+            </div>
+          </dl>
+        </div>
+      </article>
+
+      <article class="kpi" aria-labelledby="kpi-fcf">
+        <div class="kpi-main">
+          <div class="kpi-figure">
+            <div class="kpi-top">
+              <h2 id="kpi-fcf">Free cash flow</h2>
+              <p class="meta">Actual</p>
+            </div>
+            <p class="value"><span class="currency">€</span>96<span class="unit">m</span></p>
+          </div>
+          <dl class="comps">
+            <div class="comp bad">
+              <dt>vs. Forecast</dt>
+              <dd>(€18m)</dd>
+              <span class="status">Behind</span>
+            </div>
+            <div class="comp na">
+              <dt>vs. Prior forecast</dt>
+              <dd aria-label="Not available">—</dd>
+              <span class="status">No prior</span>
+            </div>
+            <div class="comp good">
+              <dt>vs. Prior year</dt>
+              <dd>+€11m</dd>
+              <span class="status">Ahead</span>
+            </div>
+          </dl>
+        </div>
+      </article>
+
+      <article class="kpi" aria-labelledby="kpi-orders">
+        <div class="kpi-main">
+          <div class="kpi-figure">
+            <div class="kpi-top">
+              <h2 id="kpi-orders">Order intake</h2>
+              <p class="meta">Actual</p>
+            </div>
+            <p class="value"><span class="currency">€</span>2,040<span class="unit">m</span></p>
+          </div>
+          <dl class="comps">
+            <div class="comp good">
+              <dt>vs. Forecast</dt>
+              <dd>+€35m</dd>
+              <span class="status">Ahead</span>
+            </div>
+            <div class="comp bad">
+              <dt>vs. Prior forecast</dt>
+              <dd>(€9m)</dd>
+              <span class="status">Behind</span>
+            </div>
+            <div class="comp good">
+              <dt>vs. Prior year</dt>
+              <dd>+4%</dd>
+              <span class="status">Ahead</span>
+            </div>
+          </dl>
+        </div>
+      </article>
+    </div>
+  </main>
+</body>
+</html>
