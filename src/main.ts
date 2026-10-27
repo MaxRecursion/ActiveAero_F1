@@ -7,6 +7,7 @@ import { loadCar } from './scene/car/loadCar';
 import type { CarModel } from './scene/car/types';
 import { createStage, type Stage } from './scene/stage';
 import { installAnalytics } from './analytics/client';
+import { startHostedAnalytics } from './analytics/hosted';
 import { watchPortraitPhone } from './ui/portraitPhone';
 
 initializeTheme();
@@ -57,6 +58,7 @@ async function getCar(): Promise<CarModel> {
 
 /** Replace the loading line with a message screen readers announce and everyone can read. */
 const analytics = installAnalytics({ webgl: hasWebGL2() });
+startHostedAnalytics();
 
 function showFailure(message: string) {
   boot.textContent = message;

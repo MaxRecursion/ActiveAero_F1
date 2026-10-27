@@ -338,7 +338,7 @@ export function createAbout(stations: StationMeta[]): AboutDialog {
     h('div', 'about-group about-group--shared', [sources, credits, shortcuts]),
     p(DISCLAIMER, 'about-disclaimer'),
     p(
-      'A cookieless count of visits — where the browser came from, the kind of screen, and which stations opened — is kept for 90 days so the project can see that people are using it. It does not identify you.',
+      'Visits are counted so the project can see that people use it: Vercel Web Analytics, which sets no cookies, and Google Analytics, which sets cookies only outside the EU, the UK and Switzerland and has its advertising features switched off. Neither identifies you by name.',
       'about-disclaimer',
     ),
   ]);
