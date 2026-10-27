@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>How UNSEEN works: the 2026 grand-prix car, station by station</title>
+    <meta name="description" content="What each of UNSEEN's six stations shows about the 2026 grand-prix car — downforce, active aero, energy, braking, tow and the aero map — and where its numbers come from." />
+    <meta name="author" content="Akshay Kulkarni" />
+    <link rel="canonical" href="https://unseen.maxrecursion.dev/about.html" />
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <meta property="og:type" content="article" />
+    <meta property="og:title" content="How UNSEEN works: the 2026 grand-prix car, station by station" />
+    <meta property="og:description" content="Six stations, each pairing a control with a documented physics model: downforce, active aero, energy, braking, tow and the aero map." />
+    <meta property="og:url" content="https://unseen.maxrecursion.dev/about.html" />
+    <meta property="og:image" content="https://unseen.maxrecursion.dev/og.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"How UNSEEN works: the 2026 grand-prix car, station by station","url":"https://unseen.maxrecursion.dev/about.html","inLanguage":"en","author":{"@type":"Person","name":"Akshay Kulkarni","url":"https://maxrecursion.dev"},"about":{"@type":"WebApplication","name":"UNSEEN","url":"https://unseen.maxrecursion.dev/"},"isBasedOn":"https://github.com/MaxRecursion/ActiveAero_F1"}</script>
+    <style>
+      :root { color-scheme: light dark; --bg: #e8e6e1; --fg: #15161a; --muted: #55575e; --line: #c9c6be; --accent: #b4321f; }
+      @media (prefers-color-scheme: dark) { :root { --bg: #0b0c0f; --fg: #e8e6e1; --muted: #9a9ca3; --line: #2a2c33; --accent: #ff6a4d; } }
+      body { margin: 0; background: var(--bg); color: var(--fg); font: 17px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif; }
+      main { max-width: 42rem; margin: 0 auto; padding: 3rem 1.25rem 4rem; }
+      h1 { font-size: clamp(1.8rem, 5vw, 2.6rem); line-height: 1.15; margin: 0.5rem 0 1rem; }
+      h2 { font-size: 1.25rem; margin: 2.25rem 0 0.5rem; }
+      p, li { color: var(--muted); }
+      a { color: var(--accent); }
+      .eyebrow { font: 600 0.8rem/1 ui-monospace, monospace; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); }
+      .cta { display: inline-block; margin-top: 1rem; padding: 0.6rem 1.1rem; border-radius: 999px; background: var(--fg); color: var(--bg); text-decoration: none; font-weight: 600; }
+      footer { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--line); font-size: 0.9rem; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <p class="eyebrow">UNSEEN</p>
+      <h1>The 2026 grand-prix car, opened up</h1>
+      <p>
+        UNSEEN is an interactive 3D explainer of a representative 2026 Formula 1™ car. It has six stations, each built
+        around one control and one physical idea: change the input, watch the car and its live readouts respond, then
+        read a short explanation of why.
+      </p>
+      <a class="cta" href="./">Open the explainer</a>
+
+      <h2>01 · Downforce</h2>
+      <p>Drag the speed and watch downforce and drag grow with it. Compare the front wing, the floor and the rear wing,
+        expose the floor in an exploded view, or flip the rig for a ceiling test that compares downforce with the car's weight.</p>
+
+      <h2>02 · Active aero</h2>
+      <p>Switch the wings between Corner Mode and Straight Mode and compare drag and downforce, with estimated power demand
+        and top speed. The model follows the 2026 mode switch, which replaces DRS.</p>
+
+      <h2>03 · Energy</h2>
+      <p>Scrub through a simulated lap to follow battery charge, motor deployment, braking recovery and super clipping.
+        X-ray the car to reveal the power unit and animate the energy paths.</p>
+
+      <h2>04 · Braking</h2>
+      <p>Play or scrub a braking zone and inspect deceleration, forward load transfer, suspension dive, glowing brake
+        discs, regenerative harvest and heat.</p>
+
+      <h2>05 · Tow</h2>
+      <p>Change the gap to a car ahead and compare the leading and following cars' drag and downforce in an illustrative
+        wake model, including the power saved and the grip given up.</p>
+
+      <h2>06 · Aero map</h2>
+      <p>The tool aerodynamicists use for a ground-effect car: downforce, drag and balance charted against front and rear
+        ride height. Lower the car and watch the floor's suction grow until, run too low, the diffuser stalls and the
+        car porpoises.</p>
+
+      <h2>Where the numbers come from</h2>
+      <p>
+        Regulation facts cite the FIA 2026 Technical Regulations (Section C). Quantities teams don't publish, such as
+        aero coefficients, grip and brake behaviour, are model assumptions and are labelled as estimates in the app. The
+        tow wake is illustrative, not CFD. The aero map's shapes come from published moving-ground wind-tunnel tests,
+        set into the 2026 floor geometry. The physics models are kept separate from the Three.js scene and covered by
+        unit tests; the source is <a href="https://github.com/MaxRecursion/ActiveAero_F1">on GitHub</a>.
+      </p>
+      <p>The explainer needs a browser with WebGL 2. On a phone, hold it sideways.</p>
+
+      <footer>
+        <p>Made by <a href="https://maxrecursion.dev">Akshay Kulkarni</a>. Car body model "F1 2026 concept" by
+          Qvist_designs, CC BY 4.0. Not affiliated with Formula 1, the FIA or any team.</p>
+      </footer>
+    </main>
+  </body>
+</html>

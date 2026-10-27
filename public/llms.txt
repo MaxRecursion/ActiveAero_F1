@@ -1,0 +1,25 @@
+# UNSEEN
+
+> An interactive 3D explainer of a representative 2026 Formula 1 car: six stations that show the forces you can't see, drawn to scale with live numbers from documented physics models.
+
+UNSEEN runs in the browser (WebGL 2, Three.js). Each station pairs one control with one physical idea, and the readouts come from physics models that are kept separate from the 3D scene and covered by unit tests. Quantities teams don't publish are labelled as estimates.
+
+Made by [Akshay Kulkarni](https://maxrecursion.dev). Source: [GitHub](https://github.com/MaxRecursion/ActiveAero_F1).
+
+## Pages
+
+- [The explainer](https://unseen.maxrecursion.dev/): the interactive 3D app (needs JavaScript and WebGL 2)
+- [How it works](https://unseen.maxrecursion.dev/about.html): each station in plain text, and where the numbers come from
+
+## Stations
+
+- Downforce (`#/downforce`): downforce and drag against speed; front wing, floor and rear wing compared; a ceiling test against the car's weight
+- Active aero (`#/active-aero`): Corner Mode and Straight Mode, the 2026 replacement for DRS; drag, downforce, power demand and top speed
+- Energy (`#/energy`): a simulated lap with battery charge, motor deployment, braking recovery and super clipping
+- Braking (`#/braking`): deceleration, load transfer, suspension dive, brake heat and regenerative harvest
+- Tow (`#/tow`): an illustrative wake model of drag saved and grip lost behind another car
+- Aero map (`#/aero-map`): downforce, drag and balance against front and rear ride height, down to diffuser stall and porpoising
+
+## Sources
+
+Regulation facts cite the FIA 2026 Technical Regulations (Section C). The aero map's shapes come from published moving-ground wind-tunnel tests (Zerihan 2001; Ruhrmann and Zhang 2003). The tow wake is illustrative, not CFD.
